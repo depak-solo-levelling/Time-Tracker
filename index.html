@@ -194,40 +194,42 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 200px;
+    height: 200px;
     margin-bottom: 20px;
   }
   .timer-ring svg {
     position: absolute;
     top: 0; left: 0;
+    width: 200px;
+    height: 200px;
     transform: rotate(-90deg);
   }
   .timer-ring-bg {
     stroke: var(--surface2);
     fill: none;
-    stroke-width: 3;
+    stroke-width: 10;
   }
   .timer-ring-fill {
     stroke: var(--accent);
     fill: none;
-    stroke-width: 3;
+    stroke-width: 10;
     stroke-linecap: round;
-    stroke-dasharray: 289;
-    stroke-dashoffset: 289;
+    stroke-dasharray: 565;
+    stroke-dashoffset: 565;
     transition: stroke-dashoffset 1s linear;
+    filter: drop-shadow(0 0 8px var(--accent));
   }
   .timer-display {
+    position: relative;
+    z-index: 2;
     font-family: 'DM Mono', monospace;
-    font-size: 52px;
     font-weight: 500;
-    letter-spacing: -2px;
+    letter-spacing: -1px;
     color: var(--text);
+    font-size: 32px;
     line-height: 1;
-    width: 100px;
-    height: 100px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
+    text-align: center;
   }
   .timer-controls {
     display: flex;
@@ -740,6 +742,59 @@
     .report-header { flex-direction: column; gap: 12px; align-items: flex-start; }
     .export-row { margin-top: 0; }
   }
+
+  /* Project delete button */
+  .proj-delete-btn {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: rgba(247,106,106,0.1);
+    border: 1px solid rgba(247,106,106,0.2);
+    color: var(--danger);
+    border-radius: 6px;
+    width: 26px; height: 26px;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, background 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2;
+  }
+  .project-card:hover .proj-delete-btn { opacity: 1; }
+  .proj-delete-btn:hover { background: rgba(247,106,106,0.25); }
+
+  /* Tag enhancements */
+  .tag { position: relative; display: inline-flex; align-items: center; gap: 4px; }
+  .tag-x {
+    font-size: 13px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.15s;
+    color: inherit;
+    font-weight: 700;
+    margin-left: 1px;
+  }
+  .tag:hover .tag-x { opacity: 0.7; }
+  .tag-x:hover { opacity: 1 !important; }
+  .tag-custom { background: rgba(180,180,255,0.12); color: #b4b4ff; }
+  .tag-add-btn {
+    background: rgba(124,106,247,0.08);
+    color: var(--accent);
+    border: 1px dashed rgba(124,106,247,0.4);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .tag-add-btn:hover { background: rgba(124,106,247,0.18); }
+  .tag-add-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
 </style>
 </head>
 <body>
@@ -775,20 +830,21 @@
           </select>
         </div>
 
-        <div class="tag-row">
-          <span style="font-size:12px;color:var(--muted);margin-right:4px;">Tags:</span>
-          <span class="tag tag-design" onclick="toggleTag(this,'design')">Design</span>
-          <span class="tag tag-dev" onclick="toggleTag(this,'dev')">Dev</span>
-          <span class="tag tag-meeting" onclick="toggleTag(this,'meeting')">Meeting</span>
-          <span class="tag tag-research" onclick="toggleTag(this,'research')">Research</span>
-          <span class="tag tag-admin" onclick="toggleTag(this,'admin')">Admin</span>
+        <div class="tag-row" id="tagRow">
+          <span style="font-size:12px;color:var(--muted);margin-right:4px;flex-shrink:0">Tags:</span>
+          <!-- rendered by renderTagRow() -->
+        </div>
+        <div class="tag-add-row" id="tagAddRow" style="display:none">
+          <input class="form-input" id="newTagInput" placeholder="Tag name..." style="flex:1;padding:6px 12px;font-size:12px" onkeydown="if(event.key==='Enter')confirmAddTag()" />
+          <button class="btn btn-primary btn-sm" onclick="confirmAddTag()">Add</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleTagAdd()">Cancel</button>
         </div>
 
         <div class="big-timer">
           <div class="timer-ring">
-            <svg width="100" height="100" viewBox="0 0 100 100">
-              <circle class="timer-ring-bg" cx="50" cy="50" r="46"/>
-              <circle class="timer-ring-fill" id="timerRing" cx="50" cy="50" r="46"/>
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+              <circle class="timer-ring-bg" cx="100" cy="100" r="90"/>
+              <circle class="timer-ring-fill" id="timerRing" cx="100" cy="100" r="90"/>
             </svg>
             <div class="timer-display" id="timerDisplay">00:00:00</div>
           </div>
@@ -956,39 +1012,21 @@ function switchTabMobile(name) {
 let state = {
   entries: JSON.parse(localStorage.getItem('time-tracker_entries') || '[]'),
   projects: JSON.parse(localStorage.getItem('time-tracker_projects') || '[]'),
+  availableTags: JSON.parse(localStorage.getItem('time-tracker_tags') || '["design","dev","meeting","research","admin"]'),
   timer: { running: false, start: null, elapsed: 0 },
   selectedTags: [],
   selectedColor: '#7c6af7',
   currentRange: 'today'
 };
 
-// Seed demo data if empty
-if (state.projects.length === 0) {
-  state.projects = [
-    { id: 'p1', name: 'Website Redesign', client: 'Acme Corp', budget: 40, color: '#7c6af7' },
-    { id: 'p2', name: 'Mobile App', client: 'TechStart', budget: 80, color: '#f7916a' },
-    { id: 'p3', name: 'Brand Identity', client: 'Visuals Co', budget: 20, color: '#6af7c8' }
-  ];
-  const now = Date.now();
-  const day = 86400000;
-  state.entries = [
-    { id: 'e1', name: 'Homepage layout', project: 'p1', tags: ['design'], duration: 5400, date: now - day * 0, billable: true },
-    { id: 'e2', name: 'API integration', project: 'p2', tags: ['dev'], duration: 7200, date: now - day * 1, billable: true },
-    { id: 'e3', name: 'Client call', project: 'p1', tags: ['meeting'], duration: 3600, date: now - day * 1, billable: true },
-    { id: 'e4', name: 'Logo concepts', project: 'p3', tags: ['design'], duration: 9000, date: now - day * 2, billable: true },
-    { id: 'e5', name: 'Sprint planning', project: 'p2', tags: ['meeting'], duration: 5400, date: now - day * 2, billable: false },
-    { id: 'e6', name: 'DB schema', project: 'p2', tags: ['dev'], duration: 10800, date: now - day * 3, billable: true },
-    { id: 'e7', name: 'Research competitors', project: 'p1', tags: ['research'], duration: 4500, date: now - day * 4, billable: false },
-    { id: 'e8', name: 'Invoice prep', project: 'p3', tags: ['admin'], duration: 1800, date: now - day * 5, billable: false },
-  ];
-  save();
-}
+// No demo data — start fresh!
 
 let timerInterval = null;
 
 function save() {
   localStorage.setItem('time-tracker_entries', JSON.stringify(state.entries));
   localStorage.setItem('time-tracker_projects', JSON.stringify(state.projects));
+  localStorage.setItem('time-tracker_tags', JSON.stringify(state.availableTags));
 }
 
 // ── Tabs ──
@@ -1025,7 +1063,7 @@ function tickTimer() {
   document.getElementById('timerDisplay').textContent = formatSeconds(elapsed);
   // ring animation (cycles every 60s)
   const pct = (elapsed % 60) / 60;
-  document.getElementById('timerRing').style.strokeDashoffset = 289 - (289 * pct);
+  document.getElementById('timerRing').style.strokeDashoffset = 565 - (565 * pct);
   updateHeaderStats();
 }
 
@@ -1038,7 +1076,7 @@ function stopTimer(save_entry) {
   }
   state.timer = { running: false, start: null, elapsed: 0 };
   document.getElementById('timerDisplay').textContent = '00:00:00';
-  document.getElementById('timerRing').style.strokeDashoffset = 289;
+  document.getElementById('timerRing').style.strokeDashoffset = 565;
   document.getElementById('startBtn').textContent = '▶ Start';
   document.getElementById('startBtn').style.background = '';
   document.getElementById('discardBtn').style.display = 'none';
@@ -1080,13 +1118,69 @@ function deleteEntry(id) {
   updateHeaderStats();
 }
 
-function toggleTag(el, tag) {
-  el.classList.toggle('selected');
+function toggleTag(tag) {
   if (state.selectedTags.includes(tag)) {
     state.selectedTags = state.selectedTags.filter(t => t !== tag);
   } else {
     state.selectedTags.push(tag);
   }
+  renderTagRow();
+}
+
+function renderTagRow() {
+  const row = document.getElementById('tagRow');
+  const tagColors = {
+    design:'tag-design', dev:'tag-dev', meeting:'tag-meeting',
+    research:'tag-research', admin:'tag-admin'
+  };
+  const tagsHtml = state.availableTags.map(t => {
+    const cls = tagColors[t] || 'tag-custom';
+    const sel = state.selectedTags.includes(t) ? ' selected' : '';
+    return `<span class="tag ${cls}${sel}" onclick="toggleTag('${t}')">${t}
+      <span class="tag-x" onclick="event.stopPropagation();removeTag('${t}')">×</span>
+    </span>`;
+  }).join('');
+  row.innerHTML = `<span style="font-size:12px;color:var(--muted);margin-right:4px;flex-shrink:0">Tags:</span>
+    ${tagsHtml}
+    <span class="tag tag-add-btn" onclick="toggleTagAdd()">+ Add</span>`;
+}
+
+function toggleTagAdd() {
+  const row = document.getElementById('tagAddRow');
+  const isHidden = row.style.display === 'none' || row.style.display === '';
+  row.style.display = isHidden ? 'flex' : 'none';
+  if (isHidden) setTimeout(() => document.getElementById('newTagInput').focus(), 50);
+}
+
+function confirmAddTag() {
+  const input = document.getElementById('newTagInput');
+  const val = input.value.trim().toLowerCase();
+  if (!val) return;
+  if (!state.availableTags.includes(val)) {
+    state.availableTags.push(val);
+    save();
+  }
+  input.value = '';
+  toggleTagAdd();
+  renderTagRow();
+}
+
+function removeTag(tag) {
+  if (!confirm('Remove tag "' + tag + '" from the list?')) return;
+  state.availableTags = state.availableTags.filter(t => t !== tag);
+  state.selectedTags = state.selectedTags.filter(t => t !== tag);
+  save();
+  renderTagRow();
+  showToast('🏷 Tag removed');
+}
+
+function deleteProject(id) {
+  if (!confirm('Delete this project? Logged time entries will remain.')) return;
+  state.projects = state.projects.filter(p => p.id !== id);
+  save();
+  renderProjects();
+  updateProjectSelects();
+  showToast('🗑 Project deleted');
 }
 
 function renderEntries() {
@@ -1174,6 +1268,7 @@ function renderProjects() {
     const pctColor = pct > 90 ? 'var(--danger)' : pct > 70 ? 'var(--accent2)' : p.color;
     return `<div class="project-card" style="--pc:${p.color}">
       <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${p.color};border-radius:16px 16px 0 0"></div>
+      <button class="proj-delete-btn" onclick="deleteProject('${p.id}')" title="Delete project">✕</button>
       <div class="project-name">${p.name}</div>
       <div class="project-client">${p.client || 'No client'}</div>
       <div class="project-hours" style="color:${p.color}">${hrs.toFixed(1)}h</div>
@@ -1378,6 +1473,7 @@ function showToast(msg) {
 updateProjectSelects();
 renderEntries();
 updateHeaderStats();
+renderTagRow();
 </script>
 </body>
 </html>
