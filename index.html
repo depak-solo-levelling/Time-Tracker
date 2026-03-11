@@ -1135,7 +1135,7 @@
         <div id="breakdownList"></div>
       </div>
       <div class="breakdown-card">
-        <div class="chart-title">Distribution</div>
+        <div class="chart-title">Project Distribution</div>
         <div class="donut-wrap">
           <svg id="donutSvg" width="160" height="160" viewBox="0 0 160 160"></svg>
           <div class="donut-label">
@@ -1143,6 +1143,42 @@
             <div class="donut-label-sub">total hrs</div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- TAG DISTRIBUTION SECTION -->
+    <div class="chart-card" style="margin-top:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <div class="chart-title" style="margin-bottom:0">Time by Tag</div>
+        <div style="display:flex;gap:6px">
+          <button class="range-btn active" id="tagViewBar" onclick="setTagView('bar',this)">Bar</button>
+          <button class="range-btn" id="tagViewDonut" onclick="setTagView('donut',this)">Donut</button>
+        </div>
+      </div>
+
+      <!-- Bar view -->
+      <div id="tagBarView">
+        <div id="tagBarChart" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+
+      <!-- Donut view -->
+      <div id="tagDonutView" style="display:none">
+        <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+          <div style="position:relative;flex-shrink:0">
+            <svg id="tagDonutSvg" width="180" height="180" viewBox="0 0 180 180"></svg>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+              <div id="tagDonutCenter" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:500"></div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">total hrs</div>
+            </div>
+          </div>
+          <div id="tagDonutLegend" style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="tagChartEmpty" style="display:none;text-align:center;padding:32px;color:var(--muted)">
+        <div style="font-size:32px;opacity:0.4;margin-bottom:8px">🏷</div>
+        <div style="font-size:13px">No tagged entries in this period</div>
       </div>
     </div>
   </div>
@@ -1576,6 +1612,19 @@ function renderReports() {
   renderBarChart(entries);
   renderBreakdown(entries, totalSecs);
   renderDonut(entries, totalSecs);
+  renderTagReport(entries, totalSecs);
+}
+
+let currentTagView = 'bar';
+function setTagView(view, btn) {
+  currentTagView = view;
+  document.querySelectorAll('#tagViewBar,#tagViewDonut').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tagBarView').style.display = view === 'bar' ? 'block' : 'none';
+  document.getElementById('tagDonutView').style.display = view === 'donut' ? 'flex' : 'none';
+  const entries = getFilteredEntries();
+  const totalSecs = entries.reduce((a,e) => a + e.duration, 0);
+  renderTagReport(entries, totalSecs);
 }
 
 function renderBarChart(entries) {
@@ -1654,6 +1703,94 @@ function renderDonut(entries, totalSecs) {
     return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${strokeW}"
       stroke-dasharray="${dash} ${gap}" stroke-dashoffset="0"
       transform="rotate(${rotation} ${cx} ${cy})" stroke-linecap="butt"/>`;
+  }).join('');
+}
+
+
+function renderTagReport(entries, totalSecs) {
+  // Build tag → seconds map
+  const tagMap = {};
+  entries.forEach(e => {
+    (e.tags || []).forEach(t => {
+      tagMap[t] = (tagMap[t] || 0) + e.duration;
+    });
+  });
+
+  const sorted = Object.entries(tagMap).sort((a, b) => b[1] - a[1]);
+  const tagTotal = sorted.reduce((a, [,s]) => a + s, 0);
+
+  const barEl   = document.getElementById('tagBarChart');
+  const donutEl = document.getElementById('tagDonutSvg');
+  const legendEl= document.getElementById('tagDonutLegend');
+  const emptyEl = document.getElementById('tagChartEmpty');
+  const centerEl= document.getElementById('tagDonutCenter');
+  const barView  = document.getElementById('tagBarView');
+  const donutView= document.getElementById('tagDonutView');
+
+  if (sorted.length === 0) {
+    barEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+    barView.style.display = 'none';
+    donutView.style.display = 'none';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+  barView.style.display  = currentTagView === 'bar'   ? 'block' : 'none';
+  donutView.style.display= currentTagView === 'donut' ? 'flex'  : 'none';
+
+  // ── Bar chart ──
+  const maxSecs = sorted[0][1];
+  barEl.innerHTML = sorted.map(([tag, secs]) => {
+    const color  = state.tagColors[tag] || '#b4b4ff';
+    const pct    = Math.round(secs / (tagTotal || 1) * 100);
+    const barPct = Math.max(2, (secs / maxSecs) * 100);
+    const hrs    = (secs / 3600).toFixed(1);
+    return `
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:80px;font-size:12px;font-weight:600;color:${color};text-align:right;flex-shrink:0">${tag}</div>
+        <div style="flex:1;position:relative;height:28px;background:var(--surface2);border-radius:6px;overflow:hidden">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:${barPct}%;background:${color}33;border-radius:6px;
+            border-right:3px solid ${color};transition:width 0.6s cubic-bezier(0.34,1.56,0.64,1)"></div>
+          <div style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:700;color:${color}">${hrs}h</div>
+        </div>
+        <div style="width:36px;font-size:11px;color:var(--muted);text-align:right;flex-shrink:0">${pct}%</div>
+      </div>`;
+  }).join('');
+
+  // ── Donut chart ──
+  const cx = 90, cy = 90, r = 68, strokeW = 20;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+  centerEl.textContent = (tagTotal / 3600).toFixed(1);
+
+  donutEl.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${strokeW}"/>` +
+    sorted.map(([tag, secs]) => {
+      const color = state.tagColors[tag] || '#b4b4ff';
+      const frac  = secs / tagTotal;
+      const dash  = frac * circ;
+      const gap   = circ - dash;
+      const rot   = offset * 360 - 90;
+      offset += frac;
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${strokeW}"
+        stroke-dasharray="${dash} ${gap}" stroke-dashoffset="0"
+        transform="rotate(${rot} ${cx} ${cy})" stroke-linecap="butt"
+        style="filter:drop-shadow(0 0 4px ${color}44)"/>`;
+    }).join('');
+
+  // ── Donut legend ──
+  legendEl.innerHTML = sorted.map(([tag, secs]) => {
+    const color = state.tagColors[tag] || '#b4b4ff';
+    const pct   = Math.round(secs / tagTotal * 100);
+    const hrs   = (secs / 3600).toFixed(1);
+    return `
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;
+          box-shadow:0 0 6px ${color}88"></div>
+        <div style="flex:1;font-size:13px;font-weight:600;color:${color}">${tag}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent3)">${hrs}h</div>
+        <div style="font-size:11px;color:var(--muted);min-width:30px;text-align:right">${pct}%</div>
+      </div>`;
   }).join('');
 }
 
