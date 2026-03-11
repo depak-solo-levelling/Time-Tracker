@@ -903,6 +903,26 @@
     padding: 14px 24px;
     border-radius: 10px;
   }
+
+  .tag-dynamic { border: 1px solid transparent; transition: all 0.15s; }
+  .tag-dynamic.selected { border-color: currentColor !important; box-shadow: 0 0 0 2px currentColor33; }
+  .tag-color-dot { font-size: 10px; opacity: 0; transition: opacity 0.15s; cursor: pointer; margin-left: 2px; }
+  .tag:hover .tag-color-dot { opacity: 0.8; }
+  .tag-color-dot:hover { opacity: 1 !important; }
+  .entry-edit {
+    background: rgba(124,106,247,0.1);
+    border: 1px solid rgba(124,106,247,0.2);
+    color: var(--accent);
+    border-radius: 5px;
+    width: 22px; height: 22px;
+    font-size: 11px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .entry-item:hover .entry-edit { opacity: 1; }
+  .entry-edit:hover { background: rgba(124,106,247,0.25); }
 </style>
 </head>
 <body>
@@ -1169,6 +1189,7 @@ let state = {
   entries: JSON.parse(localStorage.getItem('time-tracker_entries') || '[]'),
   projects: JSON.parse(localStorage.getItem('time-tracker_projects') || '[]'),
   availableTags: JSON.parse(localStorage.getItem('time-tracker_tags') || '["design","dev","meeting","research","admin"]'),
+  tagColors: JSON.parse(localStorage.getItem('time-tracker_tag_colors') || '{"design":"#7c6af7","dev":"#6af7c8","meeting":"#f7916a","research":"#f7f76a","admin":"#b0b0c0"}'),
   timer: { running: false, start: null, elapsed: 0 },
   selectedTags: [],
   selectedColor: '#7c6af7',
@@ -1183,6 +1204,7 @@ function save() {
   localStorage.setItem('time-tracker_entries', JSON.stringify(state.entries));
   localStorage.setItem('time-tracker_projects', JSON.stringify(state.projects));
   localStorage.setItem('time-tracker_tags', JSON.stringify(state.availableTags));
+  localStorage.setItem('time-tracker_tag_colors', JSON.stringify(state.tagColors));
 }
 
 // ── Tabs ──
@@ -1283,22 +1305,81 @@ function toggleTag(tag) {
   renderTagRow();
 }
 
+function getTagStyle(t) {
+  const c = state.tagColors[t] || '#b4b4ff';
+  return `background:${c}22;color:${c};border-color:${c}55`;
+}
+
 function renderTagRow() {
   const row = document.getElementById('tagRow');
-  const tagColors = {
-    design:'tag-design', dev:'tag-dev', meeting:'tag-meeting',
-    research:'tag-research', admin:'tag-admin'
-  };
-  const tagsHtml = state.availableTags.map(t => {
-    const cls = tagColors[t] || 'tag-custom';
+  const tagsHtml = state.availableTags.map((t, i) => {
     const sel = state.selectedTags.includes(t) ? ' selected' : '';
-    return `<span class="tag ${cls}${sel}" onclick="toggleTag('${t}')">${t}
+    const style = getTagStyle(t);
+    return `<span class="tag tag-dynamic${sel}" style="${style}"
+      draggable="true"
+      ondragstart="dragTag(event,${i})"
+      ondragover="event.preventDefault()"
+      ondrop="dropTag(event,${i})"
+      onclick="toggleTag('${t}')"
+    >${t}
+      <span class="tag-color-dot" onclick="event.stopPropagation();openColorPicker('${t}')" title="Change color">●</span>
       <span class="tag-x" onclick="event.stopPropagation();removeTag('${t}')">×</span>
     </span>`;
   }).join('');
   row.innerHTML = `<span style="font-size:12px;color:var(--muted);margin-right:4px;flex-shrink:0">Tags:</span>
     ${tagsHtml}
     <span class="tag tag-add-btn" onclick="toggleTagAdd()">+ Add</span>`;
+}
+
+let dragSrcIdx = null;
+function dragTag(e, idx) {
+  dragSrcIdx = idx;
+  e.dataTransfer.effectAllowed = 'move';
+}
+function dropTag(e, idx) {
+  if (dragSrcIdx === null || dragSrcIdx === idx) return;
+  const tags = [...state.availableTags];
+  const [moved] = tags.splice(dragSrcIdx, 1);
+  tags.splice(idx, 0, moved);
+  state.availableTags = tags;
+  dragSrcIdx = null;
+  save();
+  renderTagRow();
+}
+
+function openColorPicker(tag) {
+  // Remove any existing picker
+  document.getElementById('tagColorPickerWrap')?.remove();
+  const current = state.tagColors[tag] || '#7c6af7';
+  const colors = ['#7c6af7','#f7916a','#6af7c8','#f7f76a','#f76a9e','#6ab4f7','#f76a6a','#a8f76a','#f7c86a','#c86af7','#6af7f0','#f0f76a'];
+  const wrap = document.createElement('div');
+  wrap.id = 'tagColorPickerWrap';
+  wrap.style.cssText = `position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)`;
+  wrap.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;min-width:260px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+        Color for <em style="color:var(--accent)">${tag}</em>
+        <span onclick="document.getElementById('tagColorPickerWrap').remove()" style="cursor:pointer;color:var(--muted);font-size:16px">✕</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        ${colors.map(c => `<div onclick="setTagColor('${tag}','${c}')" style="width:30px;height:30px;border-radius:50%;background:${c};cursor:pointer;border:3px solid ${c===current?'white':'transparent'};transition:transform 0.15s" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></div>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:12px;color:var(--muted)">Custom:</span>
+        <input type="color" value="${current}" onchange="setTagColor('${tag}',this.value)"
+          style="width:36px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;padding:0">
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.addEventListener('click', e => { if(e.target===wrap) wrap.remove(); });
+}
+
+function setTagColor(tag, color) {
+  state.tagColors[tag] = color;
+  save();
+  document.getElementById('tagColorPickerWrap')?.remove();
+  renderTagRow();
+  showToast('🎨 Tag color updated');
 }
 
 function toggleTagAdd() {
@@ -1351,17 +1432,26 @@ function renderEntries() {
   list.innerHTML = todayEntries.map(e => {
     const proj = state.projects.find(p => p.id === e.project);
     const color = proj ? proj.color : '#6b6b80';
+    const tagsHtml = (e.tags||[]).map(t => {
+      const c = state.tagColors[t] || '#b4b4ff';
+      return `<span style="background:${c}22;color:${c};padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600">${t}</span>`;
+    }).join('');
     return `<div class="entry-item">
       <div class="entry-dot" style="background:${color}"></div>
       <div class="entry-info">
         <div class="entry-name">${e.name}</div>
-        <div class="entry-meta">
-          ${proj ? `<span>${proj.name}</span>` : ''}
-          ${e.tags?.length ? `<span>${e.tags.join(', ')}</span>` : ''}
+        <div class="entry-meta" style="gap:4px;flex-wrap:wrap">
+          ${proj ? `<span style="color:${color};font-weight:600">${proj.name}</span>` : '<span style="color:var(--muted)">No project</span>'}
+          ${tagsHtml}
         </div>
       </div>
-      <div class="entry-duration">${formatSeconds(e.duration)}</div>
-      <button class="entry-delete" onclick="deleteEntry('${e.id}')">✕</button>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+        <div class="entry-duration">${formatSeconds(e.duration)}</div>
+        <div style="display:flex;gap:4px">
+          <button class="entry-edit" onclick="openEditEntry('${e.id}')" title="Edit">✏</button>
+          <button class="entry-delete" onclick="deleteEntry('${e.id}')" title="Delete">✕</button>
+        </div>
+      </div>
     </div>`;
   }).join('');
   updateProjectSelects();
@@ -1662,6 +1752,7 @@ function resetAll() {
   state.entries = [];
   state.projects = [];
   state.availableTags = ['design', 'dev', 'meeting', 'research', 'admin'];
+  state.tagColors = {design:'#7c6af7',dev:'#6af7c8',meeting:'#f7916a',research:'#f7f76a',admin:'#b0b0c0'};
   state.selectedTags = [];
   save();
   renderEntries();
@@ -1670,6 +1761,86 @@ function resetAll() {
   updateProjectSelects();
   toggleSettings();
   showToast('✓ App reset — fresh start!');
+}
+
+
+// ── Edit Entry ──
+function openEditEntry(id) {
+  const e = state.entries.find(x => x.id === id);
+  if (!e) return;
+  document.getElementById('editEntryModal')?.remove();
+
+  const projOptions = state.projects.map(p =>
+    `<option value="${p.id}" ${e.project===p.id?'selected':''}>${p.name}</option>`
+  ).join('');
+
+  const tagOptions = state.availableTags.map(t => {
+    const c = state.tagColors[t] || '#b4b4ff';
+    const sel = (e.tags||[]).includes(t);
+    return `<span class="tag tag-dynamic${sel?' selected':''}" style="${getTagStyle(t)};cursor:pointer"
+      onclick="this.classList.toggle('selected')" data-tag="${t}">${t}</span>`;
+  }).join('');
+
+  const durationMins = Math.round(e.duration / 60);
+
+  const modal = document.createElement('div');
+  modal.id = 'editEntryModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(3px);padding:16px';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:420px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-size:15px;font-weight:800">Edit Entry</div>
+        <span onclick="document.getElementById('editEntryModal').remove()" style="cursor:pointer;color:var(--muted);font-size:18px;line-height:1">✕</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Task Name</div>
+          <input id="editName" class="form-input" style="width:100%" value="${e.name}" />
+        </div>
+
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Project</div>
+          <select id="editProject" class="project-select" style="width:100%">
+            <option value="" ${!e.project?'selected':''}>No project</option>
+            ${projOptions}
+          </select>
+        </div>
+
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Duration (minutes)</div>
+          <input id="editDuration" class="form-input" style="width:100%" type="number" value="${durationMins}" min="1" />
+        </div>
+
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Tags</div>
+          <div id="editTagRow" style="display:flex;flex-wrap:wrap;gap:6px">${tagOptions}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:24px">
+        <button class="btn btn-primary" style="flex:1" onclick="saveEditEntry('${id}')">Save Changes</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('editEntryModal').remove()">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', ev => { if(ev.target===modal) modal.remove(); });
+}
+
+function saveEditEntry(id) {
+  const idx = state.entries.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  const name = document.getElementById('editName').value.trim();
+  const project = document.getElementById('editProject').value;
+  const mins = parseInt(document.getElementById('editDuration').value);
+  const tags = [...document.querySelectorAll('#editTagRow .tag-dynamic.selected')].map(el => el.dataset.tag);
+  if (!name || isNaN(mins) || mins <= 0) { showToast('⚠ Check name and duration'); return; }
+  state.entries[idx] = { ...state.entries[idx], name, project, duration: mins * 60, tags };
+  save();
+  document.getElementById('editEntryModal').remove();
+  renderEntries();
+  updateHeaderStats();
+  showToast('✓ Entry updated');
 }
 
 </script>
