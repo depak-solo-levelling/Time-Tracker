@@ -2230,7 +2230,7 @@ function restoreFromFile(input) {
       showRestoreConfirm(data, entryCount, projCount, input);
 
     } catch(err) {
-      showToast('✗ Could not read file — make sure it's a valid backup JSON');
+      showToast('Could not read file. Please use a valid backup JSON');
       input.value = '';
     }
   };
