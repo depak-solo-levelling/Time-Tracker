@@ -1000,6 +1000,19 @@
   .toggle-text { font-size: 13px; font-weight: 600; color: var(--text); }
   .toggle-hint { font-size: 11px; color: var(--muted); }
   .ep-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+
+  .backup-status-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    margin-bottom: 4px;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .backup-status-icon { font-size: 22px; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -1027,8 +1040,63 @@
       <button class="settings-close" onclick="toggleSettings()">✕</button>
     </div>
 
+    <!-- BACKUP SECTION -->
     <div class="settings-section">
-      <div class="settings-section-title">Data Management</div>
+      <div class="settings-section-title">💾 Backup & Restore</div>
+
+      <!-- Last backup status -->
+      <div class="backup-status-card" id="backupStatusCard">
+        <div class="backup-status-icon" id="backupStatusIcon">📂</div>
+        <div style="flex:1">
+          <div class="settings-item-label">Last Backup</div>
+          <div class="settings-item-sub" id="lastBackupTime">Never backed up</div>
+        </div>
+      </div>
+
+      <!-- One-tap backup -->
+      <div class="settings-item">
+        <div>
+          <div class="settings-item-label">Backup Now</div>
+          <div class="settings-item-sub">Save full backup JSON to your Downloads folder.</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="backupNow()">↓ Backup</button>
+      </div>
+
+      <!-- Auto backup toggle -->
+      <div class="settings-item">
+        <div>
+          <div class="settings-item-label">Auto Backup</div>
+          <div class="settings-item-sub" id="autoBackupSub">Automatically backup after every 5 entries.</div>
+        </div>
+        <label class="toggle-label" style="margin-bottom:0">
+          <input type="checkbox" id="autoBackupToggle" onchange="toggleAutoBackup()">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+
+      <!-- Restore from file -->
+      <div class="settings-item">
+        <div>
+          <div class="settings-item-label">Restore from Backup</div>
+          <div class="settings-item-sub">Pick a backup JSON file to restore all data.</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('restoreFileInput').click()">↑ Restore</button>
+        <input type="file" id="restoreFileInput" accept=".json" style="display:none" onchange="restoreFromFile(this)">
+      </div>
+
+      <!-- Migrate localStorage → backup file -->
+      <div class="settings-item">
+        <div>
+          <div class="settings-item-label">Migrate & Backup</div>
+          <div class="settings-item-sub">Export everything from browser storage to a backup file right now.</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="migrateToFile()">↓ Migrate</button>
+      </div>
+    </div>
+
+    <!-- DATA MANAGEMENT SECTION -->
+    <div class="settings-section">
+      <div class="settings-section-title">🗂 Data Management</div>
 
       <div class="settings-item">
         <div>
@@ -1055,12 +1123,19 @@
       </div>
     </div>
 
+    <!-- ABOUT SECTION -->
     <div class="settings-section">
-      <div class="settings-section-title">About</div>
+      <div class="settings-section-title">ℹ About</div>
       <div class="settings-item">
         <div>
           <div class="settings-item-label">Version</div>
-          <div class="settings-item-sub">Time-Tracker v3</div>
+          <div class="settings-item-sub" id="aboutStorage">Time-Tracker v7</div>
+        </div>
+      </div>
+      <div class="settings-item">
+        <div>
+          <div class="settings-item-label">Storage Used</div>
+          <div class="settings-item-sub" id="storageUsed">Calculating...</div>
         </div>
       </div>
     </div>
@@ -1407,6 +1482,7 @@ function addEntry(data) {
   save();
   renderEntries();
   updateHeaderStats();
+  checkAutoBackup();
   showToast('✓ Entry saved — ' + formatSeconds(data.duration));
 }
 
@@ -2087,11 +2163,238 @@ updateProjectSelects();
 renderEntries();
 updateHeaderStats();
 renderTagRow();
+updateBackupStatus();
+
+
+// ── Backup & Restore ──
+
+function getFullBackup() {
+  return {
+    version: 7,
+    exportedAt: new Date().toISOString(),
+    exportedAtReadable: new Date().toLocaleString(),
+    entries: state.entries,
+    projects: state.projects,
+    availableTags: state.availableTags,
+    tagColors: state.tagColors
+  };
+}
+
+function backupNow() {
+  const data = getFullBackup();
+  const date = new Date().toISOString().slice(0,10);
+  const filename = `time-tracker-backup-${date}.json`;
+  download(filename, JSON.stringify(data, null, 2), 'application/json');
+  // Record last backup time
+  const now = new Date().toLocaleString();
+  localStorage.setItem('tt_last_backup', now);
+  updateBackupStatus();
+  showToast('✓ Backup saved to Downloads');
+}
+
+function migrateToFile() {
+  const data = getFullBackup();
+  const count = data.entries.length;
+  if (count === 0 && data.projects.length === 0) {
+    showToast('⚠ Nothing to migrate — app is empty');
+    return;
+  }
+  const date = new Date().toISOString().slice(0,10);
+  const filename = `time-tracker-migrate-${date}.json`;
+  download(filename, JSON.stringify(data, null, 2), 'application/json');
+  const now = new Date().toLocaleString();
+  localStorage.setItem('tt_last_backup', now);
+  updateBackupStatus();
+  showToast(`✓ Migrated ${count} entries to file`);
+}
+
+function restoreFromFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+
+      // Validate it's a Time-Tracker backup
+      if (!data.entries || !data.projects) {
+        showToast('✗ Invalid backup file');
+        input.value = '';
+        return;
+      }
+
+      const entryCount = data.entries.length;
+      const projCount  = data.projects.length;
+
+      // Show confirmation modal
+      showRestoreConfirm(data, entryCount, projCount, input);
+
+    } catch(err) {
+      showToast('✗ Could not read file — make sure it's a valid backup JSON');
+      input.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+
+function showRestoreConfirm(data, entryCount, projCount, input) {
+  document.getElementById('restoreConfirmModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'restoreConfirmModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);padding:16px';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:380px">
+      <div style="font-size:22px;text-align:center;margin-bottom:12px">📦</div>
+      <div style="font-size:15px;font-weight:800;text-align:center;margin-bottom:6px">Restore Backup?</div>
+      <div style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:20px">
+        From: <strong style="color:var(--text)">${data.exportedAtReadable || 'Unknown date'}</strong>
+      </div>
+
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;margin-bottom:20px;display:flex;gap:16px;justify-content:center">
+        <div style="text-align:center">
+          <div style="font-family:'DM Mono',monospace;font-size:24px;color:var(--accent)">${entryCount}</div>
+          <div style="font-size:11px;color:var(--muted)">entries</div>
+        </div>
+        <div style="width:1px;background:var(--border)"></div>
+        <div style="text-align:center">
+          <div style="font-family:'DM Mono',monospace;font-size:24px;color:var(--accent2)">${projCount}</div>
+          <div style="font-size:11px;color:var(--muted)">projects</div>
+        </div>
+        <div style="width:1px;background:var(--border)"></div>
+        <div style="text-align:center">
+          <div style="font-family:'DM Mono',monospace;font-size:24px;color:var(--accent3)">${(data.availableTags||[]).length}</div>
+          <div style="font-size:11px;color:var(--muted)">tags</div>
+        </div>
+      </div>
+
+      <div style="background:rgba(247,106,106,0.08);border:1px solid rgba(247,106,106,0.2);border-radius:10px;padding:12px;margin-bottom:20px">
+        <div style="font-size:12px;color:var(--danger);font-weight:600;margin-bottom:4px">⚠ This will replace all current data</div>
+        <div style="font-size:11px;color:var(--muted)">Your existing entries and projects will be overwritten. Consider backing up first.</div>
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-danger" style="flex:1" onclick="confirmRestore()">Restore Now</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('restoreConfirmModal').remove()">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  // Store data temporarily
+  window._pendingRestore = data;
+  input.value = '';
+}
+
+function confirmRestore() {
+  const data = window._pendingRestore;
+  if (!data) return;
+
+  // Restore all state
+  state.entries       = data.entries       || [];
+  state.projects      = data.projects      || [];
+  state.availableTags = data.availableTags || ['design','dev','meeting','research','admin'];
+  state.tagColors     = data.tagColors     || {};
+
+  save();
+  document.getElementById('restoreConfirmModal').remove();
+  document.getElementById('editProjectModal')?.remove();
+
+  // Re-render everything
+  renderEntries();
+  renderTagRow();
+  updateHeaderStats();
+  updateProjectSelects();
+  updateBackupStatus();
+  updateStorageInfo();
+
+  window._pendingRestore = null;
+  toggleSettings();
+  showToast(`✓ Restored ${state.entries.length} entries & ${state.projects.length} projects`);
+}
+
+function toggleAutoBackup() {
+  const enabled = document.getElementById('autoBackupToggle').checked;
+  localStorage.setItem('tt_auto_backup', enabled ? 'true' : 'false');
+  document.getElementById('autoBackupSub').textContent = enabled
+    ? 'Will auto-backup to Downloads after every 5 entries.'
+    : 'Auto backup is off. Use manual backup.';
+  showToast(enabled ? '✓ Auto backup enabled' : 'Auto backup disabled');
+}
+
+// Called after every addEntry — checks if auto backup threshold met
+function checkAutoBackup() {
+  const enabled = localStorage.getItem('tt_auto_backup') === 'true';
+  if (!enabled) return;
+  const count = state.entries.length;
+  const lastCount = parseInt(localStorage.getItem('tt_auto_backup_count') || '0');
+  if (count - lastCount >= 5) {
+    localStorage.setItem('tt_auto_backup_count', count);
+    backupSilent();
+  }
+}
+
+function backupSilent() {
+  const data = getFullBackup();
+  const date = new Date().toISOString().slice(0,10);
+  download(`time-tracker-auto-${date}.json`, JSON.stringify(data, null, 2), 'application/json');
+  localStorage.setItem('tt_last_backup', new Date().toLocaleString());
+  updateBackupStatus();
+  showToast('✓ Auto backup saved to Downloads');
+}
+
+function updateBackupStatus() {
+  const last = localStorage.getItem('tt_last_backup');
+  const el = document.getElementById('lastBackupTime');
+  const icon = document.getElementById('backupStatusIcon');
+  const card = document.getElementById('backupStatusCard');
+  if (!el) return;
+  if (last) {
+    el.textContent = last;
+    icon.textContent = '✅';
+    card.style.borderColor = 'rgba(106,247,160,0.3)';
+    card.style.background = 'rgba(106,247,160,0.05)';
+  } else {
+    el.textContent = 'Never backed up';
+    icon.textContent = '⚠️';
+    card.style.borderColor = 'rgba(247,145,106,0.3)';
+    card.style.background = 'rgba(247,145,106,0.05)';
+  }
+
+  // Sync auto backup toggle
+  const autoEl = document.getElementById('autoBackupToggle');
+  if (autoEl) {
+    autoEl.checked = localStorage.getItem('tt_auto_backup') === 'true';
+    const sub = document.getElementById('autoBackupSub');
+    if (sub) sub.textContent = autoEl.checked
+      ? 'Will auto-backup to Downloads after every 5 entries.'
+      : 'Auto backup is off. Use manual backup.';
+  }
+}
+
+function updateStorageInfo() {
+  const el = document.getElementById('storageUsed');
+  if (!el) return;
+  try {
+    let total = 0;
+    ['time-tracker_entries','time-tracker_projects','time-tracker_tags','time-tracker_tag_colors'].forEach(k => {
+      total += (localStorage.getItem(k) || '').length;
+    });
+    const kb = (total / 1024).toFixed(1);
+    const entryCount = state.entries.length;
+    const projCount  = state.projects.length;
+    el.textContent = `${kb} KB used • ${entryCount} entries • ${projCount} projects`;
+  } catch(e) {
+    el.textContent = 'Unable to calculate';
+  }
+}
 
 // ── Settings ──
 function toggleSettings() {
   document.getElementById('settingsDrawer').classList.toggle('show');
   document.getElementById('settingsOverlay').classList.toggle('show');
+  // Refresh info when opening
+  if (document.getElementById('settingsDrawer').classList.contains('show')) {
+    updateBackupStatus();
+    updateStorageInfo();
+  }
 }
 
 function clearEntries() {
