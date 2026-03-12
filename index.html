@@ -923,6 +923,83 @@
   }
   .entry-item:hover .entry-edit { opacity: 1; }
   .entry-edit:hover { background: rgba(124,106,247,0.25); }
+
+  /* Recurring badge */
+  .recurring-badge {
+    font-size: 10px;
+    font-weight: 700;
+    background: rgba(106,247,160,0.12);
+    color: var(--success);
+    border: 1px solid rgba(106,247,160,0.3);
+    padding: 2px 7px;
+    border-radius: 20px;
+    flex-shrink: 0;
+    letter-spacing: 0.3px;
+  }
+
+  /* Project edit button */
+  .proj-edit-btn {
+    position: absolute;
+    top: 12px; right: 44px;
+    background: rgba(124,106,247,0.1);
+    border: 1px solid rgba(124,106,247,0.2);
+    color: var(--accent);
+    border-radius: 6px;
+    width: 26px; height: 26px;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2;
+  }
+  .project-card:hover .proj-edit-btn { opacity: 1; }
+  .proj-edit-btn:hover { background: rgba(124,106,247,0.25); }
+
+  /* Toggle switch */
+  .recurring-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .toggle-label input[type=checkbox] { display: none; }
+  .toggle-track {
+    width: 38px; height: 22px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    position: relative;
+    transition: background 0.25s, border-color 0.25s;
+    flex-shrink: 0;
+  }
+  .toggle-label input:checked + .toggle-track {
+    background: rgba(124,106,247,0.3);
+    border-color: var(--accent);
+  }
+  .toggle-thumb {
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 14px; height: 14px;
+    background: var(--muted);
+    border-radius: 50%;
+    transition: transform 0.25s, background 0.25s;
+  }
+  .toggle-label input:checked + .toggle-track .toggle-thumb {
+    transform: translateX(16px);
+    background: var(--accent);
+  }
+  .toggle-text { font-size: 13px; font-weight: 600; color: var(--text); }
+  .toggle-hint { font-size: 11px; color: var(--muted); }
+  .ep-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
 </style>
 </head>
 <body>
@@ -1060,8 +1137,16 @@
     <div class="add-project-form" id="addProjectForm">
       <div class="form-row">
         <input class="form-input" id="pName" placeholder="Project name" />
-        <input class="form-input" id="pClient" placeholder="Client name" />
-        <input class="form-input" id="pBudget" type="number" placeholder="Budget (hrs)" />
+        <input class="form-input" id="pClient" placeholder="Client / Category" />
+        <input class="form-input" id="pBudget" type="number" placeholder="Budget (hrs)" id="pBudget" />
+      </div>
+      <div class="recurring-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="pRecurring" onchange="toggleBudgetLabel()">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-text">Daily recurring project</span>
+        </label>
+        <span class="toggle-hint" id="budgetHint">Budget = total hours for the project</span>
       </div>
       <div class="color-row">
         Color:
@@ -1514,6 +1599,15 @@ function selectColor(el) {
   state.selectedColor = el.dataset.color;
 }
 
+function toggleBudgetLabel() {
+  const recurring = document.getElementById('pRecurring').checked;
+  document.getElementById('budgetHint').textContent = recurring
+    ? 'Budget = target hours per day'
+    : 'Budget = total hours for the project';
+  const budgetInput = document.getElementById('pBudget');
+  budgetInput.placeholder = recurring ? 'Daily target (hrs)' : 'Budget (hrs)';
+}
+
 function saveProject() {
   const name = document.getElementById('pName').value.trim();
   if (!name) { showToast('⚠ Project name required'); return; }
@@ -1522,6 +1616,7 @@ function saveProject() {
     name,
     client: document.getElementById('pClient').value.trim(),
     budget: parseFloat(document.getElementById('pBudget').value) || 0,
+    recurring: document.getElementById('pRecurring').checked,
     color: state.selectedColor
   };
   state.projects.push(proj);
@@ -1529,6 +1624,8 @@ function saveProject() {
   document.getElementById('pName').value = '';
   document.getElementById('pClient').value = '';
   document.getElementById('pBudget').value = '';
+  document.getElementById('pRecurring').checked = false;
+  document.getElementById('budgetHint').textContent = 'Budget = total hours for the project';
   toggleAddProject();
   renderProjects();
   updateProjectSelects();
@@ -1544,23 +1641,56 @@ function renderProjects() {
     return;
   }
   grid.innerHTML = state.projects.map(p => {
-    const totalSecs = state.entries.filter(e => e.project === p.id).reduce((a, e) => a + e.duration, 0);
-    const hrs = totalSecs / 3600;
-    const pct = p.budget > 0 ? Math.min(100, (hrs / p.budget) * 100) : 0;
-    const pctColor = pct > 90 ? 'var(--danger)' : pct > 70 ? 'var(--accent2)' : p.color;
+    const allSecs = state.entries.filter(e => e.project === p.id).reduce((a, e) => a + e.duration, 0);
+
+    // For recurring: use today's logged seconds vs daily budget
+    let displaySecs = allSecs;
+    let budgetLabel = '', remainLabel = '', pct = 0, recurringBadge = '';
+
+    if (p.recurring && p.budget > 0) {
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      const todaySecs = state.entries.filter(e => e.project === p.id && e.date >= todayStart.getTime())
+        .reduce((a, e) => a + e.duration, 0);
+      displaySecs = todaySecs;
+      const budgetSecs = p.budget * 3600;
+      pct = Math.min(100, (todaySecs / budgetSecs) * 100);
+      const remaining = Math.max(0, p.budget - todaySecs / 3600);
+      remainLabel = remaining > 0
+        ? `${remaining.toFixed(1)}h left today`
+        : `<span style="color:var(--success)">✓ Daily target met!</span>`;
+      budgetLabel = `${p.budget}h / day`;
+      recurringBadge = `<span class="recurring-badge">↻ Daily</span>`;
+    } else if (p.budget > 0) {
+      const hrs = allSecs / 3600;
+      pct = Math.min(100, (hrs / p.budget) * 100);
+      remainLabel = `${Math.max(0, p.budget - hrs).toFixed(1)}h remaining`;
+      budgetLabel = `${p.budget}h total`;
+    }
+
+    const pctColor = pct > 90 ? 'var(--success)' : pct > 70 ? 'var(--accent2)' : p.color;
+    const totalHrs = (allSecs / 3600).toFixed(1);
+    const displayHrs = (displaySecs / 3600).toFixed(1);
+
     return `<div class="project-card" style="--pc:${p.color}">
       <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${p.color};border-radius:16px 16px 0 0"></div>
       <button class="proj-delete-btn" onclick="deleteProject('${p.id}')" title="Delete project">✕</button>
-      <div class="project-name">${p.name}</div>
-      <div class="project-client">${p.client || 'No client'}</div>
-      <div class="project-hours" style="color:${p.color}">${hrs.toFixed(1)}h</div>
+      <button class="proj-edit-btn" onclick="openEditProject('${p.id}')" title="Edit project">✏</button>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+        <div class="project-name" style="margin-bottom:0">${p.name}</div>
+        ${recurringBadge}
+      </div>
+      <div class="project-client">${p.client || 'No category'}</div>
+      <div class="project-hours" style="color:${p.color}">
+        ${p.recurring && p.budget > 0 ? `${displayHrs}h <span style="font-size:13px;color:var(--muted)">today</span>` : `${totalHrs}h`}
+      </div>
       ${p.budget > 0 ? `
         <div class="project-budget">
-          <span>${(p.budget - hrs).toFixed(1)}h remaining</span>
-          <span>${Math.round(pct)}%</span>
+          <span>${remainLabel}</span>
+          <span style="color:var(--muted)">${budgetLabel}</span>
         </div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${pctColor}"></div></div>
-      ` : `<div class="project-budget"><span>No budget set</span></div>`}
+        ${p.recurring ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">Total logged: ${totalHrs}h</div>` : ''}
+      ` : `<div class="project-budget"><span style="color:var(--muted)">No budget set</span></div>`}
     </div>`;
   }).join('');
 }
@@ -1570,6 +1700,106 @@ function updateProjectSelects() {
   const cur = sel.value;
   sel.innerHTML = '<option value="">No project</option>' +
     state.projects.map(p => `<option value="${p.id}"${p.id === cur ? ' selected' : ''}>${p.name}</option>`).join('');
+}
+
+
+// ── Edit Project ──
+function openEditProject(id) {
+  const p = state.projects.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('editProjectModal')?.remove();
+
+  const colors = ['#7c6af7','#f7916a','#6af7c8','#f7f76a','#f76a9e','#6ab4f7','#f76a6a','#a8f76a','#f7c86a','#c86af7'];
+  const colorSwatches = colors.map(c =>
+    `<div onclick="this.parentNode.querySelectorAll('.ep-swatch').forEach(s=>s.style.borderColor='transparent');this.style.borderColor='white';document.getElementById('epColorVal').value='${c}'"
+      class="ep-swatch"
+      style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;border:3px solid ${c===p.color?'white':'transparent'};transition:transform 0.15s;flex-shrink:0"
+      onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></div>`
+  ).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'editProjectModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.65);backdrop-filter:blur(3px);padding:16px';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:440px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
+        <div style="font-size:15px;font-weight:800">Edit Project</div>
+        <span onclick="document.getElementById('editProjectModal').remove()" style="cursor:pointer;color:var(--muted);font-size:18px">✕</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <div class="ep-label">Project Name</div>
+          <input id="epName" class="form-input" style="width:100%" value="${p.name}" />
+        </div>
+        <div>
+          <div class="ep-label">Client / Category</div>
+          <input id="epClient" class="form-input" style="width:100%" value="${p.client || ''}" placeholder="e.g. Personal, Work, Client name" />
+        </div>
+
+        <!-- Recurring toggle -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px">
+          <label class="toggle-label" style="margin-bottom:${p.recurring?'12':'0'}px">
+            <input type="checkbox" id="epRecurring" ${p.recurring?'checked':''} onchange="toggleEpBudget()">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-text" style="font-weight:700">Daily recurring project</span>
+          </label>
+          <div id="epRecurringHint" style="font-size:11px;color:var(--muted);margin-top:6px;display:${p.recurring?'block':'none'}">
+            Budget will reset daily — progress bar shows today's progress against your daily target.
+          </div>
+        </div>
+
+        <div>
+          <div class="ep-label" id="epBudgetLabel">${p.recurring ? 'Daily Target (hours)' : 'Total Budget (hours)'}</div>
+          <input id="epBudget" class="form-input" style="width:100%" type="number" value="${p.budget || ''}" placeholder="${p.recurring ? 'e.g. 8 for an 8hr workday' : 'e.g. 40 for a fixed project'}" />
+        </div>
+
+        <div>
+          <div class="ep-label">Color</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            ${colorSwatches}
+            <input type="color" id="epColorCustom" value="${p.color}"
+              onchange="document.getElementById('epColorVal').value=this.value;document.querySelectorAll('.ep-swatch').forEach(s=>s.style.borderColor='transparent')"
+              style="width:26px;height:26px;border:none;border-radius:50%;cursor:pointer;padding:0;background:none">
+          </div>
+          <input type="hidden" id="epColorVal" value="${p.color}" />
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:24px">
+        <button class="btn btn-primary" style="flex:1" onclick="saveEditProject('${id}')">Save Changes</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('editProjectModal').remove()">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', ev => { if(ev.target===modal) modal.remove(); });
+}
+
+function toggleEpBudget() {
+  const recurring = document.getElementById('epRecurring').checked;
+  document.getElementById('epBudgetLabel').textContent = recurring ? 'Daily Target (hours)' : 'Total Budget (hours)';
+  document.getElementById('epBudget').placeholder = recurring ? 'e.g. 8 for an 8hr workday' : 'e.g. 40 for a fixed project';
+  document.getElementById('epRecurringHint').style.display = recurring ? 'block' : 'none';
+}
+
+function saveEditProject(id) {
+  const idx = state.projects.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  const name = document.getElementById('epName').value.trim();
+  if (!name) { showToast('⚠ Project name required'); return; }
+  state.projects[idx] = {
+    ...state.projects[idx],
+    name,
+    client: document.getElementById('epClient').value.trim(),
+    budget: parseFloat(document.getElementById('epBudget').value) || 0,
+    recurring: document.getElementById('epRecurring').checked,
+    color: document.getElementById('epColorVal').value
+  };
+  save();
+  document.getElementById('editProjectModal').remove();
+  renderProjects();
+  updateProjectSelects();
+  showToast('✓ Project updated');
 }
 
 // ── Reports ──
