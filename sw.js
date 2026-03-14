@@ -1,4 +1,4 @@
-const CACHE = 'time-tracker-v22';
+const CACHE = 'time-tracker-v23';
 const ASSETS = [
   './',
   './index.html',

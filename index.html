@@ -1265,6 +1265,133 @@
   .role-badge-goal     { background: rgba(247,145,106,0.15); color: var(--accent2); }
   .role-badge-personal { background: rgba(106,247,160,0.12); color: var(--success); }
   .role-badge-general  { background: rgba(180,180,180,0.12); color: var(--muted); }
+
+  /* ── Streaks ── */
+  .streak-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .streak-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid transparent;
+    cursor: default;
+    transition: transform 0.15s;
+  }
+  .streak-pill:hover { transform: translateY(-1px); }
+  .streak-pill.active {
+    background: rgba(247,199,106,0.12);
+    border-color: rgba(247,199,106,0.4);
+    color: #f7c76a;
+  }
+  .streak-pill.inactive {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--muted);
+  }
+  .streak-pill.broken {
+    background: rgba(247,106,106,0.08);
+    border-color: rgba(247,106,106,0.2);
+    color: var(--danger);
+  }
+  .streak-fire { font-size: 14px; }
+  .streak-count { font-family: 'DM Mono', monospace; font-size: 14px; }
+
+  /* Streak detail cards */
+  .streak-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px,1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .streak-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .streak-card:hover { transform: translateY(-2px); }
+  .streak-card.on-fire {
+    border-color: rgba(247,199,106,0.5);
+    background: linear-gradient(135deg, var(--surface) 60%, rgba(247,199,106,0.06));
+  }
+  .streak-card.broken-streak {
+    border-color: rgba(247,106,106,0.3);
+  }
+  .streak-card-role {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .streak-card-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 36px;
+    font-weight: 500;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .streak-card-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .streak-card-best {
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .streak-dots {
+    display: flex;
+    gap: 3px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .streak-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .streak-today-badge {
+    position: absolute;
+    top: 10px; right: 10px;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-done {
+    background: rgba(106,247,160,0.15);
+    color: var(--success);
+  }
+  .badge-pending {
+    background: rgba(247,199,106,0.15);
+    color: #f7c76a;
+  }
+
+  @media (max-width: 768px) {
+    .streak-cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .streak-card-count { font-size: 28px; }
+  }
 </style>
 </head>
 <body>
@@ -1283,6 +1410,9 @@
     </div>
     <button class="settings-btn" onclick="toggleSettings()" title="Settings">⚙</button>
   </header>
+
+  <!-- Streak Bar -->
+  <div class="streak-bar" id="streakBar"></div>
 
   <!-- Settings Drawer -->
   <div class="settings-overlay" id="settingsOverlay" onclick="toggleSettings()"></div>
@@ -1401,6 +1531,10 @@
 
   <!-- TIMER PANEL -->
   <div class="panel active" id="panel-timer">
+
+    <!-- Streak Cards -->
+    <div class="streak-cards" id="streakCards"></div>
+
     <div class="timer-grid">
       <div class="timer-card">
         <div class="task-input-row">
@@ -1740,7 +1874,7 @@ function switchTabMobile(name) {
   document.getElementById('bnav-' + name).classList.add('active');
   if (name === 'projects') renderProjects();
   if (name === 'reports') renderReports();
-  if (name === 'timer') renderEntries();
+  if (name === 'timer') { renderEntries(); renderStreaks(); }
 }
 
 // ── State ──
@@ -1847,6 +1981,7 @@ function addEntry(data) {
   save();
   renderEntries();
   updateHeaderStats();
+  renderStreaks();
   checkAutoBackup();
   showToast('✓ Entry saved — ' + formatSeconds(data.duration));
 }
@@ -1856,6 +1991,7 @@ function deleteEntry(id) {
   save();
   renderEntries();
   updateHeaderStats();
+  renderStreaks();
 }
 
 function toggleTag(tag) {
@@ -2770,6 +2906,11 @@ ${Object.entries(dailyMap).map(([d,s])=>`  - ${d}: ${(s/3600).toFixed(1)}h`).joi
 ${peakHour ? `PEAK HOUR: ${peakHour[0]}:00-${peakHour[0]}:59 (most active hour)` : ''}
 
 PROJECTS CONFIGURED: ${state.projects.map(p=>`${p.name} [role:${p.role||'general'}${p.recurring?' recurring':''}]`).join(', ')||'None'}
+
+CURRENT STREAKS: ${(() => {
+  const sd = calculateStreaks();
+  return Object.entries(sd).map(([r,s]) => `${s.label}: ${s.current} days (best: ${s.best})`).join(', ');
+})()}
 `;
 
   // Show loading
@@ -3144,6 +3285,163 @@ function calculateAppScore(entries) {
   return { total, breakdown: scores };
 }
 
+
+// ── Streak System ──
+
+function getDateKey(date) {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function calculateStreaks() {
+  // Get roles that have projects
+  const roles = ['work','goal','personal','general'];
+  const activeRoles = roles.filter(r => state.projects.some(p => (p.role||'general') === r));
+
+  // Also add an "overall" streak (any entry)
+  const streakData = {};
+
+  // Overall streak
+  const allDays = new Set(state.entries.map(e => getDateKey(e.date)));
+  streakData['overall'] = computeStreak(allDays, '🔥', 'Overall', '#f7c76a');
+
+  // Per-role streaks
+  const roleConfig = {
+    work:     { icon: '💼', label: 'Work',     color: 'var(--accent)' },
+    goal:     { icon: '🎯', label: 'Goal',     color: 'var(--accent2)' },
+    personal: { icon: '🌱', label: 'Personal', color: 'var(--success)' },
+    general:  { icon: '📦', label: 'General',  color: 'var(--muted)' }
+  };
+
+  activeRoles.forEach(role => {
+    const cfg = roleConfig[role];
+    const projectIds = state.projects.filter(p=>(p.role||'general')===role).map(p=>p.id);
+    const roleDays = new Set(
+      state.entries.filter(e => projectIds.includes(e.project)).map(e => getDateKey(e.date))
+    );
+    streakData[role] = computeStreak(roleDays, cfg.icon, cfg.label, cfg.color);
+  });
+
+  return streakData;
+}
+
+function computeStreak(daysSet, icon, label, color) {
+  const today     = getDateKey(Date.now());
+  const yesterday = getDateKey(Date.now() - 86400000);
+  const days      = [...daysSet].sort().reverse(); // newest first
+
+  if (days.length === 0) {
+    return { current:0, best:0, icon, label, color, todayDone:false, broken:false, last7:[] };
+  }
+
+  // Calculate current streak
+  let current   = 0;
+  let checkDate = new Date(); checkDate.setHours(0,0,0,0);
+  const todayDone = daysSet.has(today);
+
+  // Start from today if done, else from yesterday
+  if (!todayDone) checkDate.setDate(checkDate.getDate()-1);
+
+  while (true) {
+    const key = getDateKey(checkDate);
+    if (daysSet.has(key)) {
+      current++;
+      checkDate.setDate(checkDate.getDate()-1);
+    } else {
+      break;
+    }
+  }
+
+  // Calculate best streak ever
+  let best    = 0;
+  let running = 0;
+  const allSorted = [...daysSet].sort();
+  for (let i = 0; i < allSorted.length; i++) {
+    if (i === 0) {
+      running = 1;
+    } else {
+      const prev = new Date(allSorted[i-1]);
+      const curr = new Date(allSorted[i]);
+      const diff = (curr - prev) / 86400000;
+      running = diff === 1 ? running + 1 : 1;
+    }
+    best = Math.max(best, running);
+  }
+
+  // Last 7 days status
+  const last7 = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate()-i); d.setHours(0,0,0,0);
+    const key = getDateKey(d);
+    const isToday = key === today;
+    last7.push({
+      key,
+      done: daysSet.has(key),
+      isToday,
+      label: ['S','M','T','W','T','F','S'][d.getDay()]
+    });
+  }
+
+  // Broken = yesterday not done and today not done
+  const broken = !todayDone && !daysSet.has(yesterday) && current === 0 && days.length > 0;
+
+  return { current, best, icon, label, color, todayDone, broken, last7 };
+}
+
+function renderStreaks() {
+  const streakData  = calculateStreaks();
+  const streakBar   = document.getElementById('streakBar');
+  const streakCards = document.getElementById('streakCards');
+  if (!streakBar || !streakCards) return;
+
+  // ── Streak Bar (header pills) ──
+  const roles = Object.keys(streakData);
+  streakBar.innerHTML = roles.map(role => {
+    const s = streakData[role];
+    if (s.current === 0 && !s.broken) return ''; // hide zero streaks in bar
+    const cls = s.broken ? 'broken' : s.current > 0 ? 'active' : 'inactive';
+    const emoji = s.broken ? '💔' : s.current >= 7 ? '🔥' : s.current >= 3 ? '⚡' : '✦';
+    return `<div class="streak-pill ${cls}" title="${s.label} streak">
+      <span class="streak-fire">${emoji}</span>
+      <span>${s.label}</span>
+      <span class="streak-count">${s.current}d</span>
+    </div>`;
+  }).join('');
+
+  // ── Streak Cards ──
+  streakCards.innerHTML = Object.entries(streakData).map(([role, s]) => {
+    const onFire  = s.current >= 3;
+    const todayBadge = s.todayDone
+      ? `<span class="streak-today-badge badge-done">✓ Today</span>`
+      : `<span class="streak-today-badge badge-pending">Pending</span>`;
+
+    const dotsHtml = s.last7.map(d => {
+      const bg = d.done
+        ? s.color.startsWith('var') ? s.color : s.color
+        : d.isToday ? 'rgba(124,106,247,0.2)' : 'var(--border)';
+      const border = d.isToday ? '2px solid var(--accent)' : 'none';
+      return `<div class="streak-dot" style="background:${bg};outline:${border}" title="${d.label}"></div>`;
+    }).join('');
+
+    const statusText = s.broken
+      ? 'Streak broken — restart today!'
+      : s.current === 0
+        ? 'Start your streak today'
+        : s.current === 1
+          ? 'Started! Keep going tomorrow'
+          : `${s.current} day streak 🔥`;
+
+    return `<div class="streak-card ${onFire?'on-fire':''} ${s.broken?'broken-streak':''}">
+      ${todayBadge}
+      <div class="streak-card-role">${s.icon} ${s.label}</div>
+      <div class="streak-card-count" style="color:${s.broken?'var(--danger)':s.color}">${s.current}</div>
+      <div class="streak-card-label">${statusText}</div>
+      <div class="streak-dots">${dotsHtml}</div>
+      <div class="streak-card-best">🏆 Best: ${s.best} days</div>
+    </div>`;
+  }).join('');
+}
+
 // ── Export ──
 function exportCSV() {
   const entries = getFilteredEntries();
@@ -3209,6 +3507,7 @@ updateHeaderStats();
 renderTagRow();
 updateBackupStatus();
 updateAnalyzeBtn();
+renderStreaks();
 
 
 // ── Backup & Restore ──
