@@ -1013,6 +1013,68 @@
     transition: background 0.3s, border-color 0.3s;
   }
   .backup-status-icon { font-size: 22px; flex-shrink: 0; }
+
+  .custom-date-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    animation: slideIn 0.25s ease;
+  }
+  .custom-date-inner {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .date-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .date-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+  .date-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    min-width: 140px;
+  }
+  .date-input:focus { border-color: var(--accent); }
+  .date-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.6);
+    cursor: pointer;
+  }
+  .date-sep {
+    color: var(--muted);
+    font-size: 16px;
+    padding-bottom: 10px;
+    flex-shrink: 0;
+  }
+  .custom-range-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-family: 'DM Mono', monospace;
+  }
+  @media (max-width: 768px) {
+    .custom-date-inner { flex-direction: column; align-items: stretch; }
+    .date-sep { display: none; }
+    .date-input { min-width: unset; width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -1249,16 +1311,34 @@
   <!-- REPORTS PANEL -->
   <div class="panel" id="panel-reports">
     <div class="report-header">
-      <div class="date-range">
-        <button class="range-btn active" onclick="setRange('today',this)">Today</button>
-        <button class="range-btn" onclick="setRange('week',this)">This Week</button>
-        <button class="range-btn" onclick="setRange('month',this)">This Month</button>
-        <button class="range-btn" onclick="setRange('all',this)">All Time</button>
+      <div class="date-range" id="dateRangeBtns">
+        <button class="range-btn active" id="rb-today"  onclick="setRange('today',this)">Today</button>
+        <button class="range-btn"        id="rb-week"   onclick="setRange('week',this)">Week</button>
+        <button class="range-btn"        id="rb-month"  onclick="setRange('month',this)">Month</button>
+        <button class="range-btn"        id="rb-all"    onclick="setRange('all',this)">All Time</button>
+        <button class="range-btn"        id="rb-custom" onclick="setRange('custom',this)">📅 Custom</button>
       </div>
       <div class="export-row">
-        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ Export CSV</button>
-        <button class="btn btn-ghost btn-sm" onclick="exportJSON()">↓ Export JSON</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportJSON()">↓ JSON</button>
       </div>
+    </div>
+
+    <!-- Custom date picker row — shown only when custom range active -->
+    <div class="custom-date-row" id="customDateRow" style="display:none">
+      <div class="custom-date-inner">
+        <div class="date-field">
+          <label class="date-label">From</label>
+          <input type="date" id="customFrom" class="date-input" onchange="applyCustomRange()" />
+        </div>
+        <div class="date-sep">→</div>
+        <div class="date-field">
+          <label class="date-label">To</label>
+          <input type="date" id="customTo" class="date-input" onchange="applyCustomRange()" />
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="applyCustomRange()" style="align-self:flex-end">Apply</button>
+      </div>
+      <div id="customRangeLabel" class="custom-range-label"></div>
     </div>
 
     <div class="report-summary">
@@ -1389,7 +1469,9 @@ let state = {
   timer: { running: false, start: null, elapsed: 0 },
   selectedTags: [],
   selectedColor: '#7c6af7',
-  currentRange: 'today'
+  currentRange: 'today',
+  customFrom: null,
+  customTo: null
 };
 
 // No demo data — start fresh!
@@ -1881,22 +1963,70 @@ function saveEditProject(id) {
 // ── Reports ──
 function setRange(range, btn) {
   state.currentRange = range;
-  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  // Only remove active from the preset buttons, not tag view buttons
+  document.querySelectorAll('#dateRangeBtns .range-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+
+  const customRow = document.getElementById('customDateRow');
+  if (range === 'custom') {
+    customRow.style.display = 'block';
+    // Default: last 7 days
+    const today = new Date();
+    const week  = new Date(); week.setDate(week.getDate() - 6);
+    if (!document.getElementById('customFrom').value) {
+      document.getElementById('customFrom').value = week.toISOString().slice(0,10);
+      document.getElementById('customTo').value   = today.toISOString().slice(0,10);
+    }
+    applyCustomRange();
+  } else {
+    customRow.style.display = 'none';
+    renderReports();
+  }
+}
+
+function applyCustomRange() {
+  const from = document.getElementById('customFrom').value;
+  const to   = document.getElementById('customTo').value;
+  if (!from || !to) return;
+
+  const fromDate = new Date(from); fromDate.setHours(0,0,0,0);
+  const toDate   = new Date(to);   toDate.setHours(23,59,59,999);
+
+  if (fromDate > toDate) {
+    document.getElementById('customRangeLabel').textContent = 'End date must be after start date';
+    document.getElementById('customRangeLabel').style.color = 'var(--danger)';
+    return;
+  }
+
+  state.customFrom = fromDate.getTime();
+  state.customTo   = toDate.getTime();
+
+  // Nice label
+  const opts = { day:'numeric', month:'short', year:'numeric' };
+  const fromStr = fromDate.toLocaleDateString(undefined, opts);
+  const toStr   = toDate.toLocaleDateString(undefined, opts);
+  const days    = Math.round((toDate - fromDate) / 86400000) + 1;
+  const label   = document.getElementById('customRangeLabel');
+  label.textContent = `${fromStr}  —  ${toStr}  (${days} day${days !== 1 ? 's' : ''})`;
+  label.style.color = 'var(--muted)';
+
   renderReports();
 }
 
 function getFilteredEntries() {
-  const now = Date.now();
-  const day = 86400000;
-  const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
-  const startOfWeek = new Date(); startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); startOfWeek.setHours(0,0,0,0);
+  if (state.currentRange === 'custom') {
+    const from = state.customFrom || 0;
+    const to   = state.customTo   || Date.now();
+    return state.entries.filter(e => e.date >= from && e.date <= to);
+  }
+  const startOfDay   = new Date(); startOfDay.setHours(0,0,0,0);
+  const startOfWeek  = new Date(); startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); startOfWeek.setHours(0,0,0,0);
   const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
   const ranges = {
     today: startOfDay.getTime(),
-    week: startOfWeek.getTime(),
+    week:  startOfWeek.getTime(),
     month: startOfMonth.getTime(),
-    all: 0
+    all:   0
   };
   return state.entries.filter(e => e.date >= ranges[state.currentRange]);
 }
