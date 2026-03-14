@@ -1392,6 +1392,198 @@
     .streak-cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .streak-card-count { font-size: 28px; }
   }
+
+  /* ── Goals Panel ── */
+  .goals-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    padding: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+  }
+  .goals-date {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .goals-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .goals-sub { font-size: 13px; color: var(--muted); }
+  .goals-progress-ring { position: relative; flex-shrink: 0; }
+  .goals-ring-label {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    color: var(--accent3);
+  }
+
+  .goal-add-form {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+    animation: slideIn 0.2s ease;
+  }
+
+  /* Goal item */
+  .goal-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transition: border-color 0.2s, transform 0.15s;
+    animation: slideIn 0.25s ease;
+  }
+  .goal-item:hover { transform: translateY(-1px); }
+  .goal-item.done {
+    opacity: 0.6;
+    border-color: rgba(106,247,160,0.3);
+    background: rgba(106,247,160,0.03);
+  }
+  .goal-checkbox {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    transition: all 0.2s;
+    margin-top: 1px;
+  }
+  .goal-checkbox.checked {
+    background: var(--success);
+    border-color: var(--success);
+    color: #0a0a0f;
+  }
+  .goal-checkbox:hover:not(.checked) { border-color: var(--accent); }
+  .goal-info { flex: 1; min-width: 0; }
+  .goal-task {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    line-height: 1.3;
+  }
+  .goal-item.done .goal-task { text-decoration: line-through; color: var(--muted); }
+  .goal-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+  }
+  .priority-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .priority-high   { background:rgba(247,106,106,0.12); color:var(--danger); }
+  .priority-medium { background:rgba(247,199,106,0.12); color:#f7c76a; }
+  .priority-low    { background:rgba(106,247,160,0.12); color:var(--success); }
+
+  .goal-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+  .goal-action-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 11px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .goal-action-btn.start-btn { color: var(--accent); border-color: rgba(124,106,247,0.3); }
+  .goal-action-btn.start-btn:hover { background: rgba(124,106,247,0.1); }
+  .goal-action-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  /* EOD card */
+  .eod-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 16px;
+  }
+  .eod-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .eod-row:last-child { border-bottom: none; }
+  .eod-status { font-size: 16px; flex-shrink: 0; }
+
+  /* Morning popup */
+  .morning-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(6px);
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .morning-popup {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 400px;
+    animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes popIn {
+    from { opacity:0; transform:scale(0.85) translateY(20px); }
+    to   { opacity:1; transform:scale(1) translateY(0); }
+  }
+  .morning-header { text-align: center; margin-bottom: 24px; }
+  .morning-emoji  { font-size: 48px; margin-bottom: 10px; }
+  .morning-greeting { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+  .morning-date { font-size: 12px; color: var(--muted); }
+  .morning-goal-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    transition: opacity 0.2s;
+  }
+  .morning-goal-num {
+    width: 24px; height: 24px;
+    background: var(--accent);
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 800;
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
 </style>
 </head>
 <body>
@@ -1525,6 +1717,7 @@
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('timer')">⏱ Timer</button>
+    <button class="tab" onclick="switchTab('goals')">🎯 Goals</button>
     <button class="tab" onclick="switchTab('projects')">📁 Projects</button>
     <button class="tab" onclick="switchTab('reports')">📊 Reports</button>
   </div>
@@ -1592,6 +1785,75 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- GOALS PANEL -->
+  <div class="panel" id="panel-goals">
+
+    <!-- Morning check-in header -->
+    <div class="goals-header">
+      <div>
+        <div class="goals-date" id="goalsTodayDate"></div>
+        <div class="goals-title">Daily Goals</div>
+        <div class="goals-sub" id="goalsSubtitle">What do you want to accomplish today?</div>
+      </div>
+      <div class="goals-progress-ring">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="26" fill="none" stroke="var(--surface2)" stroke-width="6"/>
+          <circle id="goalRingFill" cx="32" cy="32" r="26" fill="none" stroke="var(--accent3)"
+            stroke-width="6" stroke-linecap="round" stroke-dasharray="163" stroke-dashoffset="163"
+            transform="rotate(-90 32 32)" style="transition:stroke-dashoffset 0.6s ease"/>
+        </svg>
+        <div class="goals-ring-label">
+          <span id="goalsDoneCount">0</span>/<span id="goalsTotalCount">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add goal form -->
+    <div class="goal-add-form" id="goalAddForm" style="display:none">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent)">+ New Goal</div>
+      <input class="form-input" id="goalTaskInput" placeholder="What do you want to accomplish?" style="width:100%;margin-bottom:10px"
+        onkeydown="if(event.key==='Enter')saveGoal()" />
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Project</div>
+          <select class="project-select" id="goalProject" style="width:100%;padding:8px 10px;font-size:13px"></select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:1px">Priority</div>
+          <select class="project-select" id="goalPriority" style="width:100%;padding:8px 10px;font-size:13px">
+            <option value="high">🔴 High</option>
+            <option value="medium" selected>🟡 Medium</option>
+            <option value="low">🟢 Low</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Tags</div>
+        <div id="goalTagRow" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="saveGoal()">Add Goal</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleGoalForm()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Goals list -->
+    <div id="goalsList"></div>
+
+    <!-- End of day summary -->
+    <div class="eod-card" id="eodCard" style="display:none">
+      <div class="chart-title" style="margin-bottom:12px">📊 End of Day Reality Check</div>
+      <div id="eodContent"></div>
+    </div>
+
+    <!-- Add goal button -->
+    <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+      <button class="btn btn-primary" onclick="toggleGoalForm()" id="addGoalBtn">+ Add Goal</button>
+      <button class="btn btn-ghost btn-sm" onclick="showEOD()">📊 Reality Check</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearTodayGoals()" style="color:var(--muted)">Clear Today</button>
     </div>
   </div>
 
@@ -1846,6 +2108,9 @@
   <button class="bnav-item active" id="bnav-timer" onclick="switchTabMobile('timer')">
     <span class="bnav-icon">⏱</span>Timer
   </button>
+  <button class="bnav-item" id="bnav-goals" onclick="switchTabMobile('goals')">
+    <span class="bnav-icon">🎯</span>Goals
+  </button>
   <button class="bnav-item" id="bnav-projects" onclick="switchTabMobile('projects')">
     <span class="bnav-icon">📁</span>Projects
   </button>
@@ -1853,6 +2118,40 @@
     <span class="bnav-icon">📊</span>Reports
   </button>
 </nav>
+
+<!-- Morning Check-in Popup -->
+<div class="morning-overlay" id="morningOverlay" style="display:none">
+  <div class="morning-popup">
+    <div class="morning-header">
+      <div class="morning-emoji">🌅</div>
+      <div class="morning-greeting" id="morningGreeting">Good morning, Deepak!</div>
+      <div class="morning-date" id="morningDate"></div>
+    </div>
+    <div class="morning-body">
+      <div style="font-size:14px;font-weight:700;margin-bottom:6px">What are your focus goals for today?</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Set 1-3 goals to guide your day. You can start the timer directly from each goal.</div>
+
+      <div id="morningGoalInputs">
+        <div class="morning-goal-input-row">
+          <span class="morning-goal-num">1</span>
+          <input class="form-input" placeholder="First focus task..." style="flex:1;padding:8px 12px;font-size:13px" id="mg1" onkeydown="if(event.key==='Enter')focusNextMorningInput(1)" />
+        </div>
+        <div class="morning-goal-input-row" id="mg2row" style="opacity:0.5">
+          <span class="morning-goal-num">2</span>
+          <input class="form-input" placeholder="Second focus task..." style="flex:1;padding:8px 12px;font-size:13px" id="mg2" onkeydown="if(event.key==='Enter')focusNextMorningInput(2)" onfocus="document.getElementById('mg2row').style.opacity='1'" />
+        </div>
+        <div class="morning-goal-input-row" id="mg3row" style="opacity:0.5">
+          <span class="morning-goal-num">3</span>
+          <input class="form-input" placeholder="Third focus task..." style="flex:1;padding:8px 12px;font-size:13px" id="mg3" onfocus="document.getElementById('mg3row').style.opacity='1'" />
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:20px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveMorningGoals()">Start My Day 🚀</button>
+      <button class="btn btn-ghost" onclick="dismissMorning()">Skip</button>
+    </div>
+  </div>
+</div>
 
 <!-- Toast -->
 <div class="toast" id="toast">✓ Done</div>
@@ -1873,7 +2172,8 @@ function switchTabMobile(name) {
   document.getElementById('panel-' + name).classList.add('active');
   document.getElementById('bnav-' + name).classList.add('active');
   if (name === 'projects') renderProjects();
-  if (name === 'reports') renderReports();
+  if (name === 'reports')  renderReports();
+  if (name === 'goals')    renderGoalsPanel();
   if (name === 'timer') { renderEntries(); renderStreaks(); }
 }
 
@@ -2907,6 +3207,12 @@ ${peakHour ? `PEAK HOUR: ${peakHour[0]}:00-${peakHour[0]}:59 (most active hour)`
 
 PROJECTS CONFIGURED: ${state.projects.map(p=>`${p.name} [role:${p.role||'general'}${p.recurring?' recurring':''}]`).join(', ')||'None'}
 
+TODAY\'S GOALS: ${(() => {
+  const goals = loadTodayGoals();
+  if (goals.length === 0) return 'No goals set for today';
+  return goals.map(g => `${g.done?'✓':'○'} ${g.task} [${g.priority}]`).join(', ');
+})()}
+
 CURRENT STREAKS: ${(() => {
   const sd = calculateStreaks();
   return Object.entries(sd).map(([r,s]) => `${s.label}: ${s.current} days (best: ${s.best})`).join(', ');
@@ -3442,6 +3748,287 @@ function renderStreaks() {
   }).join('');
 }
 
+
+// ── Daily Goals ──
+
+function getTodayKey() {
+  const d = new Date();
+  return `goals_${d.getFullYear()}_${d.getMonth()}_${d.getDate()}`;
+}
+
+function loadTodayGoals() {
+  return JSON.parse(localStorage.getItem(getTodayKey()) || '[]');
+}
+
+function saveTodayGoals(goals) {
+  localStorage.setItem(getTodayKey(), JSON.stringify(goals));
+}
+
+function renderGoalsPanel() {
+  const goals   = loadTodayGoals();
+  const now     = new Date();
+  const dateStr = now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+
+  // Header
+  const dateEl = document.getElementById('goalsTodayDate');
+  if (dateEl) dateEl.textContent = dateStr;
+
+  // Progress ring
+  const done  = goals.filter(g => g.done).length;
+  const total = goals.length;
+  const pct   = total > 0 ? done/total : 0;
+  const ringFill = document.getElementById('goalRingFill');
+  if (ringFill) ringFill.style.strokeDashoffset = 163 - (163 * pct);
+  const doneEl  = document.getElementById('goalsDoneCount');
+  const totalEl = document.getElementById('goalsTotalCount');
+  if (doneEl)  doneEl.textContent  = done;
+  if (totalEl) totalEl.textContent = total;
+
+  // Subtitle
+  const sub = document.getElementById('goalsSubtitle');
+  if (sub) {
+    if (total === 0) sub.textContent = 'No goals set yet. Add your focus tasks for today!';
+    else if (done === total) sub.textContent = '🎉 All goals completed! Outstanding day!';
+    else sub.textContent = `${total - done} goal${total-done>1?'s':''} remaining — stay focused!`;
+  }
+
+  // Goals list
+  const list = document.getElementById('goalsList');
+  if (!list) return;
+
+  // Sort: high priority first, then done at bottom
+  const sorted = [...goals].sort((a,b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    const order = {high:0, medium:1, low:2};
+    return (order[a.priority]||1) - (order[b.priority]||1);
+  });
+
+  if (sorted.length === 0) {
+    list.innerHTML = `<div class="empty" style="padding:40px">
+      <div class="empty-icon">🎯</div>
+      <div class="empty-text">No goals yet.<br>Add your focus tasks for today!</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = sorted.map(g => {
+    const proj   = state.projects.find(p => p.id === g.project);
+    const color  = proj ? proj.color : 'var(--muted)';
+    const tagsHtml = (g.tags||[]).map(t => {
+      const c = state.tagColors[t] || '#b4b4ff';
+      return `<span style="background:${c}22;color:${c};padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600">${t}</span>`;
+    }).join('');
+
+    return `<div class="goal-item ${g.done?'done':''}" id="goal-${g.id}">
+      <div class="goal-checkbox ${g.done?'checked':''}" onclick="toggleGoalDone('${g.id}')">
+        ${g.done ? '✓' : ''}
+      </div>
+      <div class="goal-info">
+        <div class="goal-task">${g.task}</div>
+        <div class="goal-meta">
+          ${proj ? `<span style="color:${color};font-size:11px;font-weight:600">${proj.name}</span>` : ''}
+          <span class="priority-badge priority-${g.priority}">${g.priority}</span>
+          ${tagsHtml}
+        </div>
+      </div>
+      <div class="goal-actions">
+        ${!g.done ? `<button class="goal-action-btn start-btn" onclick="startGoalTimer('${g.id}')">▶ Start</button>` : ''}
+        <button class="goal-action-btn" onclick="deleteGoal('${g.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleGoalForm() {
+  const form = document.getElementById('goalAddForm');
+  const btn  = document.getElementById('addGoalBtn');
+  const show = form.style.display === 'none';
+  form.style.display = show ? 'block' : 'none';
+  btn.textContent    = show ? '✕ Cancel' : '+ Add Goal';
+  if (show) {
+    // Populate project select
+    const sel = document.getElementById('goalProject');
+    sel.innerHTML = '<option value="">No project</option>' +
+      state.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    // Populate tags
+    const tagRow = document.getElementById('goalTagRow');
+    tagRow.innerHTML = state.availableTags.map(t => {
+      const c = state.tagColors[t] || '#b4b4ff';
+      return `<span class="tag tag-dynamic" style="background:${c}22;color:${c};border:1px solid transparent;cursor:pointer"
+        data-tag="${t}" onclick="this.classList.toggle('selected');this.style.borderColor=this.classList.contains('selected')?'currentColor':'transparent'"
+      >${t}</span>`;
+    }).join('');
+    document.getElementById('goalTaskInput').focus();
+  }
+}
+
+function saveGoal() {
+  const task = document.getElementById('goalTaskInput').value.trim();
+  if (!task) { showToast('⚠ Enter a task name'); return; }
+
+  const tags = [...document.querySelectorAll('#goalTagRow .tag-dynamic.selected')].map(el => el.dataset.tag);
+  const goal = {
+    id: 'g' + Date.now(),
+    task,
+    project:  document.getElementById('goalProject').value,
+    priority: document.getElementById('goalPriority').value,
+    tags,
+    done: false,
+    createdAt: Date.now()
+  };
+  const goals = loadTodayGoals();
+  goals.push(goal);
+  saveTodayGoals(goals);
+
+  document.getElementById('goalTaskInput').value = '';
+  document.getElementById('goalTagRow').querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+  toggleGoalForm();
+  renderGoalsPanel();
+  showToast('🎯 Goal added');
+}
+
+function toggleGoalDone(id) {
+  const goals = loadTodayGoals();
+  const g = goals.find(x => x.id === id);
+  if (!g) return;
+  g.done = !g.done;
+  if (g.done) g.completedAt = Date.now();
+  saveTodayGoals(goals);
+  renderGoalsPanel();
+  if (g.done) showToast('✅ Goal completed!');
+}
+
+function deleteGoal(id) {
+  const goals = loadTodayGoals().filter(g => g.id !== id);
+  saveTodayGoals(goals);
+  renderGoalsPanel();
+}
+
+function clearTodayGoals() {
+  if (!confirm('Clear all goals for today?')) return;
+  saveTodayGoals([]);
+  renderGoalsPanel();
+  showToast('🗑 Goals cleared');
+}
+
+function startGoalTimer(id) {
+  const goal = loadTodayGoals().find(g => g.id === id);
+  if (!goal) return;
+  // Pre-fill timer
+  document.getElementById('taskName').value = goal.task;
+  document.getElementById('taskProject').value = goal.project || '';
+  // Pre-select tags
+  state.selectedTags = [...(goal.tags||[])];
+  renderTagRow();
+  // Switch to timer tab
+  switchTabMobile ? switchTabMobile('timer') : null;
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab,.bnav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-timer').classList.add('active');
+  document.getElementById('bnav-timer')?.classList.add('active');
+  showToast('▶ Timer ready — press Start!');
+}
+
+function showEOD() {
+  const goals   = loadTodayGoals();
+  const card    = document.getElementById('eodCard');
+  const content = document.getElementById('eodContent');
+  if (!card || !content) return;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayEntries = state.entries.filter(e => e.date >= today.getTime());
+  const loggedTasks  = todayEntries.map(e => e.name.toLowerCase());
+
+  if (goals.length === 0) {
+    content.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px">No goals were set for today.<br>Set goals tomorrow morning for a better reality check!</div>`;
+  } else {
+    content.innerHTML = goals.map(g => {
+      const matched = g.done || loggedTasks.some(t => t.includes(g.task.toLowerCase().slice(0,8)));
+      const proj = state.projects.find(p => p.id === g.project);
+      const projLoggedSecs = proj
+        ? todayEntries.filter(e => e.project === g.project).reduce((a,e) => a+e.duration, 0)
+        : 0;
+      return `<div class="eod-row">
+        <span class="eod-status">${g.done ? '✅' : matched ? '🔶' : '❌'}</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;${g.done?'text-decoration:line-through;color:var(--muted)':''}">${g.task}</div>
+          ${proj ? `<div style="font-size:11px;color:var(--muted)">${proj.name} · ${secsToHM(projLoggedSecs)} logged today</div>` : ''}
+        </div>
+        <span style="font-size:11px;font-weight:700;color:${g.done?'var(--success)':'var(--muted)'}">${g.done?'Done':'Pending'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── Morning Popup ──
+function checkMorningPopup() {
+  const todayKey  = 'morning_shown_' + getTodayKey();
+  const alreadySeen = localStorage.getItem(todayKey);
+  if (alreadySeen) return;
+
+  const goals = loadTodayGoals();
+  if (goals.length > 0) return; // already has goals
+
+  const hour = new Date().getHours();
+  // Show between 5am and 1pm only
+  if (hour < 5 || hour >= 13) return;
+
+  showMorningPopup();
+}
+
+function showMorningPopup() {
+  const overlay = document.getElementById('morningOverlay');
+  if (!overlay) return;
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const greetEl = document.getElementById('morningGreeting');
+  const dateEl  = document.getElementById('morningDate');
+  if (greetEl) greetEl.textContent = `${greeting}, Deepak! 👋`;
+  if (dateEl)  dateEl.textContent  = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+
+  overlay.style.display = 'flex';
+  setTimeout(() => document.getElementById('mg1')?.focus(), 400);
+}
+
+function dismissMorning() {
+  document.getElementById('morningOverlay').style.display = 'none';
+  localStorage.setItem('morning_shown_' + getTodayKey(), '1');
+}
+
+function focusNextMorningInput(current) {
+  const val = document.getElementById('mg' + current)?.value.trim();
+  if (!val) return;
+  const next = document.getElementById('mg' + (current+1));
+  if (next) {
+    document.getElementById('mg' + (current+1) + 'row').style.opacity = '1';
+    next.focus();
+  }
+}
+
+function saveMorningGoals() {
+  const inputs = ['mg1','mg2','mg3'].map(id => document.getElementById(id)?.value.trim()).filter(Boolean);
+  if (inputs.length === 0) { dismissMorning(); return; }
+
+  const goals = inputs.map((task, i) => ({
+    id: 'g' + Date.now() + i,
+    task,
+    project: '',
+    priority: i === 0 ? 'high' : i === 1 ? 'medium' : 'low',
+    tags: [],
+    done: false,
+    createdAt: Date.now()
+  }));
+
+  saveTodayGoals(goals);
+  dismissMorning();
+  renderGoalsPanel();
+  showToast(`🎯 ${goals.length} goals set — have a great day!`);
+}
+
 // ── Export ──
 function exportCSV() {
   const entries = getFilteredEntries();
@@ -3508,6 +4095,7 @@ renderTagRow();
 updateBackupStatus();
 updateAnalyzeBtn();
 renderStreaks();
+checkMorningPopup();
 
 
 // ── Backup & Restore ──
