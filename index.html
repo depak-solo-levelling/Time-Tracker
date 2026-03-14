@@ -1152,6 +1152,81 @@
     color: var(--accent3);
   }
   .sidebar-card .entry-list { max-height: 520px; }
+
+  /* ── AI Insights ── */
+  .ai-insights-card {
+    border-color: rgba(124,106,247,0.3);
+    background: linear-gradient(135deg, var(--surface) 0%, rgba(124,106,247,0.04) 100%);
+  }
+  .ai-sparkle {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    color: white;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(124,106,247,0.4);
+  }
+  .ai-analyze-btn {
+    background: linear-gradient(135deg, var(--accent), #a78bfa) !important;
+    box-shadow: 0 4px 14px rgba(124,106,247,0.35);
+    transition: all 0.2s !important;
+  }
+  .ai-analyze-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,106,247,0.45) !important; }
+  .ai-analyze-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+
+  .ai-loader {
+    width: 36px; height: 36px;
+    border: 3px solid var(--surface2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .ai-content {
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--text);
+  }
+  .ai-content .ai-section {
+    margin-bottom: 20px;
+  }
+  .ai-content .ai-section-title {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ai-content .ai-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(124,106,247,0.2);
+  }
+  .ai-content .ai-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border-radius: 10px;
+    border-left: 3px solid transparent;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .ai-content .ai-item.positive { border-left-color: var(--success); }
+  .ai-content .ai-item.warning  { border-left-color: var(--accent2); }
+  .ai-content .ai-item.tip      { border-left-color: var(--accent); }
+  .ai-content .ai-item.neutral  { border-left-color: var(--muted); }
+  .ai-item-icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
 </style>
 </head>
 <body>
@@ -1522,6 +1597,52 @@
         </div>
       </div>
       <div id="dailyLogContainer"></div>
+    </div>
+
+    <!-- AI INSIGHTS SECTION -->
+    <div class="chart-card ai-insights-card" style="margin-top:20px" id="aiInsightsSection">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="ai-sparkle">✦</div>
+          <div>
+            <div class="chart-title" style="margin-bottom:2px">AI Coach</div>
+            <div style="font-size:11px;color:var(--muted)">Personalized insights based on your logged data</div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm ai-analyze-btn" id="aiAnalyzeBtn" onclick="runAIAnalysis()">
+          ✦ Analyze My Week
+        </button>
+      </div>
+
+      <!-- Range indicator -->
+      <div id="aiRangeLabel" style="font-size:11px;color:var(--muted);margin-bottom:16px;display:none"></div>
+
+      <!-- Loading state -->
+      <div id="aiLoading" style="display:none;text-align:center;padding:32px">
+        <div class="ai-loader"></div>
+        <div style="font-size:13px;color:var(--muted);margin-top:14px" id="aiLoadingText">Analysing your data...</div>
+      </div>
+
+      <!-- Empty / prompt state -->
+      <div id="aiPromptState" style="text-align:center;padding:24px 16px">
+        <div style="font-size:36px;margin-bottom:10px;opacity:0.5">🤖</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6">
+          Select a date range above and click <strong style="color:var(--accent)">Analyze My Week</strong><br>
+          to get a personalized productivity summary and improvement suggestions.
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="aiResults" style="display:none">
+        <div id="aiContent" class="ai-content"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--muted)" id="aiTimestamp"></div>
+          <button class="btn btn-ghost btn-sm" onclick="runAIAnalysis()">↻ Re-analyze</button>
+        </div>
+      </div>
+
+      <!-- Error state -->
+      <div id="aiError" style="display:none;padding:16px;background:rgba(247,106,106,0.08);border:1px solid rgba(247,106,106,0.2);border-radius:12px;font-size:13px;color:var(--danger)"></div>
     </div>
   </div>
 </div>
@@ -2457,6 +2578,222 @@ function deleteDailyEntry(id) {
   updateHeaderStats();
   renderReports();
   showToast('🗑 Entry deleted');
+}
+
+
+// ── AI Coach ──
+async function runAIAnalysis() {
+  const entries = getFilteredEntries();
+
+  if (entries.length === 0) {
+    showAIError('No entries found for this period. Log some time first, then analyze.');
+    return;
+  }
+
+  // Build data summary to send to Claude
+  const totalSecs   = entries.reduce((a,e) => a+e.duration, 0);
+  const uniqueDays  = [...new Set(entries.map(e => new Date(e.date).toDateString()))];
+  const avgPerDay   = totalSecs / (uniqueDays.length || 1);
+
+  // Project breakdown
+  const projMap = {};
+  entries.forEach(e => {
+    const key = state.projects.find(p=>p.id===e.project)?.name || 'No project';
+    projMap[key] = (projMap[key]||0) + e.duration;
+  });
+
+  // Tag breakdown
+  const tagMap = {};
+  entries.forEach(e => {
+    (e.tags||[]).forEach(t => { tagMap[t] = (tagMap[t]||0) + e.duration; });
+  });
+
+  // Daily totals
+  const dailyMap = {};
+  entries.forEach(e => {
+    const day = new Date(e.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    dailyMap[day] = (dailyMap[day]||0) + e.duration;
+  });
+
+  // Hour-of-day distribution (peak productivity window)
+  const hourMap = {};
+  entries.forEach(e => {
+    const h = new Date(e.date).getHours();
+    hourMap[h] = (hourMap[h]||0) + e.duration;
+  });
+  const peakHour = Object.entries(hourMap).sort((a,b)=>b[1]-a[1])[0];
+
+  // Build context string
+  const rangeLabel = {today:'Today',week:'This Week',month:'This Month',all:'All Time',custom:'Custom Range'}[state.currentRange] || 'Selected Period';
+  document.getElementById('aiRangeLabel').textContent = `Analysing: ${rangeLabel} · ${entries.length} entries · ${uniqueDays.length} days`;
+  document.getElementById('aiRangeLabel').style.display = 'block';
+
+  const dataContext = `
+PERIOD: ${rangeLabel}
+TOTAL TIME TRACKED: ${(totalSecs/3600).toFixed(1)} hours across ${uniqueDays.length} days
+AVERAGE PER DAY: ${(avgPerDay/3600).toFixed(1)} hours
+TOTAL ENTRIES: ${entries.length}
+
+TIME BY PROJECT:
+${Object.entries(projMap).sort((a,b)=>b[1]-a[1]).map(([n,s])=>`  - ${n}: ${(s/3600).toFixed(1)}h (${Math.round(s/totalSecs*100)}%)`).join('\n')}
+
+TIME BY TAG (activity type):
+${Object.entries(tagMap).length > 0
+  ? Object.entries(tagMap).sort((a,b)=>b[1]-a[1]).map(([t,s])=>`  - ${t}: ${(s/3600).toFixed(1)}h (${Math.round(s/totalSecs*100)}%)`).join('\n')
+  : '  - No tags used'}
+
+DAILY BREAKDOWN:
+${Object.entries(dailyMap).map(([d,s])=>`  - ${d}: ${(s/3600).toFixed(1)}h`).join('\n')}
+
+${peakHour ? `PEAK HOUR: ${peakHour[0]}:00-${peakHour[0]}:59 (most active hour)` : ''}
+
+PROJECTS CONFIGURED: ${state.projects.map(p=>`${p.name}${p.recurring?' (daily recurring)':''}`).join(', ')||'None'}
+`;
+
+  // Show loading
+  setAIState('loading');
+  document.getElementById('aiAnalyzeBtn').disabled = true;
+
+  const loadingMessages = [
+    'Reading your time logs...',
+    'Spotting patterns in your day...',
+    'Crafting your productivity insights...',
+    'Almost ready...'
+  ];
+  let msgIdx = 0;
+  const msgInterval = setInterval(() => {
+    msgIdx = (msgIdx+1) % loadingMessages.length;
+    const el = document.getElementById('aiLoadingText');
+    if (el) el.textContent = loadingMessages[msgIdx];
+  }, 1800);
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: `You are a personal productivity coach analyzing someone's time tracking data. 
+The user is an Automation Tester who also does manual feature testing, is preparing for job interviews, and tracks personal life activities.
+They use three projects: Work (testing), Interview Prep, and Personal Life.
+
+Analyze their data and respond with ONLY a valid JSON object — no markdown, no backticks, no explanation outside the JSON.
+
+The JSON must have this exact structure:
+{
+  "summary": "2-3 sentence plain-English overview of their week",
+  "positives": ["thing they did well 1", "thing they did well 2"],
+  "warnings": ["concern or imbalance 1", "concern or imbalance 2"],
+  "tips": ["specific actionable suggestion 1", "specific actionable suggestion 2", "specific actionable suggestion 3"],
+  "focus_score": 72
+}
+
+focus_score is 0-100 rating of how focused and productive the period looks based on deep/shallow/meeting tag ratios and consistency.
+Keep each item concise — 1-2 sentences max. Be specific to their actual numbers, not generic.`,
+        messages: [{
+          role: 'user',
+          content: `Here is my time tracking data for analysis:\n${dataContext}\n\nGive me a productivity analysis and improvement suggestions.`
+        }]
+      })
+    });
+
+    clearInterval(msgInterval);
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || 'API error ' + response.status);
+    }
+
+    const data = await response.json();
+    const rawText = data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+
+    let parsed;
+    try {
+      const clean = rawText.replace(/```json|```/g,'').trim();
+      parsed = JSON.parse(clean);
+    } catch(e) {
+      throw new Error('Could not parse AI response. Please try again.');
+    }
+
+    renderAIResults(parsed);
+
+  } catch(err) {
+    clearInterval(msgInterval);
+    showAIError(err.message || 'Something went wrong. Please try again.');
+  } finally {
+    document.getElementById('aiAnalyzeBtn').disabled = false;
+  }
+}
+
+function renderAIResults(data) {
+  setAIState('results');
+
+  const scoreColor = data.focus_score >= 70 ? 'var(--success)' : data.focus_score >= 40 ? 'var(--accent2)' : 'var(--danger)';
+  const scoreLabel = data.focus_score >= 70 ? 'Great focus' : data.focus_score >= 40 ? 'Moderate focus' : 'Needs attention';
+
+  const html = `
+    <!-- Focus Score -->
+    <div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--surface2);border-radius:12px;margin-bottom:20px">
+      <div style="text-align:center;flex-shrink:0">
+        <div style="font-family:'DM Mono',monospace;font-size:36px;font-weight:500;color:${scoreColor};line-height:1">${data.focus_score}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px">Focus Score</div>
+      </div>
+      <div style="flex:1">
+        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px">
+          <div style="height:100%;width:${data.focus_score}%;background:${scoreColor};border-radius:4px;transition:width 1s ease"></div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:${scoreColor}">${scoreLabel}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${data.summary}</div>
+      </div>
+    </div>
+
+    <!-- Positives -->
+    <div class="ai-section">
+      <div class="ai-section-title">✓ What you did well</div>
+      ${(data.positives||[]).map(p=>`
+        <div class="ai-item positive">
+          <span class="ai-item-icon">✓</span>
+          <span>${p}</span>
+        </div>`).join('')}
+    </div>
+
+    <!-- Warnings -->
+    <div class="ai-section">
+      <div class="ai-section-title">⚠ Watch out for</div>
+      ${(data.warnings||[]).map(w=>`
+        <div class="ai-item warning">
+          <span class="ai-item-icon">⚠</span>
+          <span>${w}</span>
+        </div>`).join('')}
+    </div>
+
+    <!-- Tips -->
+    <div class="ai-section">
+      <div class="ai-section-title">💡 Suggestions</div>
+      ${(data.tips||[]).map(t=>`
+        <div class="ai-item tip">
+          <span class="ai-item-icon">→</span>
+          <span>${t}</span>
+        </div>`).join('')}
+    </div>
+  `;
+
+  document.getElementById('aiContent').innerHTML = html;
+  document.getElementById('aiTimestamp').textContent = 'Generated ' + new Date().toLocaleString();
+}
+
+function setAIState(state) {
+  document.getElementById('aiLoading').style.display    = state==='loading' ? 'block' : 'none';
+  document.getElementById('aiPromptState').style.display = state==='prompt'  ? 'block' : 'none';
+  document.getElementById('aiResults').style.display    = state==='results' ? 'block' : 'none';
+  document.getElementById('aiError').style.display      = state==='error'   ? 'block' : 'none';
+}
+
+function showAIError(msg) {
+  setAIState('error');
+  document.getElementById('aiError').innerHTML = `<strong>⚠ Error:</strong> ${msg}<br><br>
+    <button class="btn btn-ghost btn-sm" onclick="runAIAnalysis()">Try Again</button>`;
 }
 
 // ── Export ──
