@@ -1227,6 +1227,44 @@
   .ai-content .ai-item.tip      { border-left-color: var(--accent); }
   .ai-content .ai-item.neutral  { border-left-color: var(--muted); }
   .ai-item-icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
+
+  /* Role selector */
+  .role-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .role-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 10px 8px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    background: var(--surface2);
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .role-option:hover { border-color: var(--accent); }
+  .role-option.selected {
+    border-color: var(--accent);
+    background: rgba(124,106,247,0.12);
+  }
+  .role-icon  { font-size: 18px; line-height: 1; }
+  .role-label { font-size: 12px; font-weight: 700; color: var(--text); }
+  .role-desc  { font-size: 10px; color: var(--muted); }
+
+  /* Role badge on project card */
+  .role-badge {
+    font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 20px;
+  }
+  .role-badge-work     { background: rgba(124,106,247,0.15); color: var(--accent); }
+  .role-badge-goal     { background: rgba(247,145,106,0.15); color: var(--accent2); }
+  .role-badge-personal { background: rgba(106,247,160,0.12); color: var(--success); }
+  .role-badge-general  { background: rgba(180,180,180,0.12); color: var(--muted); }
 </style>
 </head>
 <body>
@@ -1434,7 +1472,28 @@
       <div class="form-row">
         <input class="form-input" id="pName" placeholder="Project name" />
         <input class="form-input" id="pClient" placeholder="Client / Category" />
-        <input class="form-input" id="pBudget" type="number" placeholder="Budget (hrs)" id="pBudget" />
+        <input class="form-input" id="pBudget" type="number" placeholder="Budget (hrs)" />
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Project Role <span style="color:var(--accent)">*</span></div>
+        <div class="role-selector" id="pRoleSelector">
+          <div class="role-option selected" data-role="work" onclick="selectRole(this,'pRoleSelector')">
+            <span class="role-icon">💼</span><span class="role-label">Work</span>
+            <span class="role-desc">Professional activity</span>
+          </div>
+          <div class="role-option" data-role="goal" onclick="selectRole(this,'pRoleSelector')">
+            <span class="role-icon">🎯</span><span class="role-label">Goal</span>
+            <span class="role-desc">Active target to achieve</span>
+          </div>
+          <div class="role-option" data-role="personal" onclick="selectRole(this,'pRoleSelector')">
+            <span class="role-icon">🌱</span><span class="role-label">Personal</span>
+            <span class="role-desc">Life & wellbeing</span>
+          </div>
+          <div class="role-option" data-role="general" onclick="selectRole(this,'pRoleSelector')">
+            <span class="role-icon">📦</span><span class="role-label">General</span>
+            <span class="role-desc">Everything else</span>
+          </div>
+        </div>
       </div>
       <div class="recurring-row">
         <label class="toggle-label">
@@ -1610,7 +1669,7 @@
           </div>
         </div>
         <button class="btn btn-primary btn-sm ai-analyze-btn" id="aiAnalyzeBtn" onclick="runAIAnalysis()">
-          ✦ Analyze My Week
+          ✦ Analyze Period
         </button>
       </div>
 
@@ -2025,6 +2084,7 @@ function saveProject() {
     client: document.getElementById('pClient').value.trim(),
     budget: parseFloat(document.getElementById('pBudget').value) || 0,
     recurring: document.getElementById('pRecurring').checked,
+    role: document.querySelector('#pRoleSelector .role-option.selected')?.dataset.role || 'general',
     color: state.selectedColor
   };
   state.projects.push(proj);
@@ -2083,9 +2143,12 @@ function renderProjects() {
       <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${p.color};border-radius:16px 16px 0 0"></div>
       <button class="proj-delete-btn" onclick="deleteProject('${p.id}')" title="Delete project">✕</button>
       <button class="proj-edit-btn" onclick="openEditProject('${p.id}')" title="Edit project">✏</button>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap">
         <div class="project-name" style="margin-bottom:0">${p.name}</div>
         ${recurringBadge}
+        <span class="role-badge role-badge-${p.role||'general'}">${
+          {work:'💼 Work',goal:'🎯 Goal',personal:'🌱 Personal',general:'📦 General'}[p.role||'general']
+        }</span>
       </div>
       <div class="project-client">${p.client || 'No category'}</div>
       <div class="project-hours" style="color:${p.color}">
@@ -2145,6 +2208,25 @@ function openEditProject(id) {
           <input id="epClient" class="form-input" style="width:100%" value="${p.client || ''}" placeholder="e.g. Personal, Work, Client name" />
         </div>
 
+        <!-- Role selector -->
+        <div>
+          <div class="ep-label">Project Role</div>
+          <div class="role-selector" id="epRoleSelector">
+            <div class="role-option ${p.role==='work'||!p.role?'selected':''}" data-role="work" onclick="selectRole(this,'epRoleSelector')">
+              <span class="role-icon">💼</span><span class="role-label">Work</span>
+            </div>
+            <div class="role-option ${p.role==='goal'?'selected':''}" data-role="goal" onclick="selectRole(this,'epRoleSelector')">
+              <span class="role-icon">🎯</span><span class="role-label">Goal</span>
+            </div>
+            <div class="role-option ${p.role==='personal'?'selected':''}" data-role="personal" onclick="selectRole(this,'epRoleSelector')">
+              <span class="role-icon">🌱</span><span class="role-label">Personal</span>
+            </div>
+            <div class="role-option ${p.role==='general'?'selected':''}" data-role="general" onclick="selectRole(this,'epRoleSelector')">
+              <span class="role-icon">📦</span><span class="role-label">General</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Recurring toggle -->
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px">
           <label class="toggle-label" style="margin-bottom:${p.recurring?'12':'0'}px">
@@ -2201,6 +2283,7 @@ function saveEditProject(id) {
     client: document.getElementById('epClient').value.trim(),
     budget: parseFloat(document.getElementById('epBudget').value) || 0,
     recurring: document.getElementById('epRecurring').checked,
+    role: document.querySelector('#epRoleSelector .role-option.selected')?.dataset.role || 'general',
     color: document.getElementById('epColorVal').value
   };
   save();
@@ -2304,6 +2387,19 @@ function renderReports() {
 }
 
 let currentTagView = 'bar';
+
+const rangeAnalyzeLabels = {
+  today: '✦ Analyze Today',
+  week:  '✦ Analyze This Week',
+  month: '✦ Analyze This Month',
+  all:   '✦ Analyze All Time',
+  custom:'✦ Analyze Custom Range'
+};
+
+function updateAnalyzeBtn() {
+  const btn = document.getElementById('aiAnalyzeBtn');
+  if (btn) btn.textContent = rangeAnalyzeLabels[state.currentRange] || '✦ Analyze Period';
+}
 function setTagView(view, btn) {
   currentTagView = view;
   document.querySelectorAll('#tagViewBar,#tagViewDonut').forEach(b => b.classList.remove('active'));
@@ -2647,7 +2743,7 @@ ${Object.entries(dailyMap).map(([d,s])=>`  - ${d}: ${(s/3600).toFixed(1)}h`).joi
 
 ${peakHour ? `PEAK HOUR: ${peakHour[0]}:00-${peakHour[0]}:59 (most active hour)` : ''}
 
-PROJECTS CONFIGURED: ${state.projects.map(p=>`${p.name}${p.recurring?' (daily recurring)':''}`).join(', ')||'None'}
+PROJECTS CONFIGURED: ${state.projects.map(p=>`${p.name} [role:${p.role||'general'}${p.recurring?' recurring':''}]`).join(', ')||'None'}
 `;
 
   // Show loading
@@ -2769,23 +2865,85 @@ Keep each item concise — 1-2 sentences max. Be specific to their actual number
 function renderAIResults(data) {
   setAIState('results');
 
-  const scoreColor = data.focus_score >= 70 ? 'var(--success)' : data.focus_score >= 40 ? 'var(--accent2)' : 'var(--danger)';
-  const scoreLabel = data.focus_score >= 70 ? 'Great focus' : data.focus_score >= 40 ? 'Moderate focus' : 'Needs attention';
+  // Calculate app score
+  const entries   = getFilteredEntries();
+  const appScore  = calculateAppScore(entries);
+  const aiScore   = data.focus_score;
+
+  function scoreColor(s) { return s >= 70 ? 'var(--success)' : s >= 40 ? 'var(--accent2)' : 'var(--danger)'; }
+  function scoreLabel(s) { return s >= 70 ? 'Great focus' : s >= 40 ? 'Moderate focus' : 'Needs attention'; }
+
+  // Score difference insight
+  const diff = aiScore - appScore.total;
+  const diffNote = Math.abs(diff) <= 10
+    ? 'Both scores agree — your data tells a consistent story.'
+    : diff > 10
+      ? 'AI rates higher — qualitative factors like task quality boosted the AI perception.'
+      : 'App rates higher — your consistency was good but AI detected qualitative concerns.';
 
   const html = `
-    <!-- Focus Score -->
-    <div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--surface2);border-radius:12px;margin-bottom:20px">
-      <div style="text-align:center;flex-shrink:0">
-        <div style="font-family:'DM Mono',monospace;font-size:36px;font-weight:500;color:${scoreColor};line-height:1">${data.focus_score}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px">Focus Score</div>
-      </div>
-      <div style="flex:1">
-        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px">
-          <div style="height:100%;width:${data.focus_score}%;background:${scoreColor};border-radius:4px;transition:width 1s ease"></div>
+    <!-- Dual Score Cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+
+      <!-- App Score -->
+      <div style="padding:16px;background:var(--surface2);border-radius:12px;border:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:14px">⚙</span>
+          <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">App Score</span>
         </div>
-        <div style="font-size:12px;font-weight:700;color:${scoreColor}">${scoreLabel}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">${data.summary}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:40px;font-weight:500;color:${scoreColor(appScore.total)};line-height:1;margin-bottom:8px">${appScore.total}</div>
+        <div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px">
+          <div style="height:100%;width:${appScore.total}%;background:${scoreColor(appScore.total)};border-radius:4px;transition:width 1s ease"></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:${scoreColor(appScore.total)}">${scoreLabel(appScore.total)}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Formula-based · Objective</div>
       </div>
+
+      <!-- AI Score -->
+      <div style="padding:16px;background:var(--surface2);border-radius:12px;border:1px solid rgba(124,106,247,0.3)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:14px">✦</span>
+          <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">AI Score</span>
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:40px;font-weight:500;color:${scoreColor(aiScore)};line-height:1;margin-bottom:8px">${aiScore}</div>
+        <div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px">
+          <div style="height:100%;width:${aiScore}%;background:${scoreColor(aiScore)};border-radius:4px;transition:width 1s ease"></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:${scoreColor(aiScore)}">${scoreLabel(aiScore)}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">AI interpretation · Qualitative</div>
+      </div>
+    </div>
+
+    <!-- Score comparison note -->
+    <div style="padding:10px 14px;background:rgba(124,106,247,0.08);border-radius:10px;border-left:3px solid var(--accent);font-size:12px;color:var(--muted);margin-bottom:20px">
+      ${diffNote}
+    </div>
+
+    <!-- App Score Breakdown -->
+    <div class="ai-section">
+      <div class="ai-section-title">⚙ App Score Breakdown</div>
+      ${appScore.breakdown.map(s => {
+        const pct = Math.round(s.pts/s.max*100);
+        const c   = s.pts/s.max >= 0.7 ? 'var(--success)' : s.pts/s.max >= 0.4 ? 'var(--accent2)' : 'var(--danger)';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:10px;margin-bottom:6px">
+          <span style="font-size:15px;flex-shrink:0">${s.icon}</span>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:12px;font-weight:700">${s.label}</span>
+              <span style="font-family:'DM Mono',monospace;font-size:12px;color:${c}">${s.pts}/${s.max}</span>
+            </div>
+            <div style="height:4px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:4px">
+              <div style="height:100%;width:${pct}%;background:${c};border-radius:4px"></div>
+            </div>
+            <div style="font-size:11px;color:var(--muted)">${s.note}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- Summary -->
+    <div style="padding:12px 14px;background:var(--surface2);border-radius:10px;font-size:13px;line-height:1.6;margin-bottom:20px;border-left:3px solid var(--accent2)">
+      ${data.summary}
     </div>
 
     <!-- Positives -->
@@ -2834,6 +2992,125 @@ function showAIError(msg) {
   setAIState('error');
   document.getElementById('aiError').innerHTML = `<strong>⚠ Error:</strong> ${msg}<br><br>
     <button class="btn btn-ghost btn-sm" onclick="runAIAnalysis()">Try Again</button>`;
+}
+
+
+// ── App Focus Score (formula-based) ──
+function calculateAppScore(entries) {
+  if (entries.length === 0) return { total: 0, breakdown: [] };
+
+  const totalSecs   = entries.reduce((a,e) => a+e.duration, 0);
+  const uniqueDays  = [...new Set(entries.map(e => new Date(e.date).toDateString()))];
+  const periodDays  = Math.max(uniqueDays.length, 1);
+
+  // Determine period length from range
+  const rangeDays = {today:1, week:7, month:30, all: Math.max(periodDays,1), custom: Math.max(periodDays,1)};
+  const totalPeriodDays = rangeDays[state.currentRange] || periodDays;
+
+  // Tag maps
+  const tagSecs = {};
+  entries.forEach(e => (e.tags||[]).forEach(t => { tagSecs[t] = (tagSecs[t]||0) + e.duration; }));
+
+  // Project role maps
+  const roleSecs = { work:0, goal:0, personal:0, general:0 };
+  const roleDays = { work:new Set(), goal:new Set(), personal:new Set(), general:new Set() };
+  entries.forEach(e => {
+    const proj = state.projects.find(p => p.id === e.project);
+    const role = proj?.role || 'general';
+    const day  = new Date(e.date).toDateString();
+    roleSecs[role] += e.duration;
+    roleDays[role].add(day);
+  });
+
+  const hasWork     = roleSecs.work > 0;
+  const hasGoal     = roleSecs.goal > 0;
+  const hasPersonal = roleSecs.personal > 0;
+
+  // Redistribute weights if roles missing
+  let weights = { deepWork:30, consistency:25, goal:20, meetings:15, personal:10 };
+  if (!hasGoal)     { weights.consistency += 12; weights.deepWork += 8; weights.goal = 0; }
+  if (!hasPersonal) { weights.consistency += 6;  weights.deepWork += 4; weights.personal = 0; }
+
+  const scores = [];
+
+  // 1. Deep Work Quality (Work role)
+  if (weights.deepWork > 0) {
+    const workSecs = roleSecs.work || totalSecs;
+    const deepSecs = tagSecs['deep'] || tagSecs['automation'] || tagSecs['dev'] || 0;
+    const shallowSecs = tagSecs['shallow'] || tagSecs['admin'] || 0;
+    const deepRatio = workSecs > 0 ? Math.min(deepSecs / workSecs, 1) : 0.5;
+    const pts = Math.round(deepRatio * weights.deepWork);
+    scores.push({
+      label: 'Deep Work Quality',
+      icon: '🧠',
+      pts,
+      max: weights.deepWork,
+      note: deepSecs > 0
+        ? `${Math.round(deepRatio*100)}% of work time was deep/focused`
+        : 'Tag your deep work entries to improve this score'
+    });
+  }
+
+  // 2. Consistency
+  if (weights.consistency > 0) {
+    const ratio = Math.min(uniqueDays.length / totalPeriodDays, 1);
+    const pts   = Math.round(ratio * weights.consistency);
+    scores.push({
+      label: 'Daily Consistency',
+      icon: '📅',
+      pts,
+      max: weights.consistency,
+      note: `Tracked ${uniqueDays.length} of ${totalPeriodDays} days`
+    });
+  }
+
+  // 3. Goal Progress
+  if (weights.goal > 0) {
+    const goalDayCount = roleDays.goal.size;
+    const ratio = Math.min(goalDayCount / totalPeriodDays, 1);
+    const pts   = Math.round(ratio * weights.goal);
+    const goalProjects = state.projects.filter(p=>p.role==='goal').map(p=>p.name).join(', ');
+    scores.push({
+      label: 'Goal Consistency',
+      icon: '🎯',
+      pts,
+      max: weights.goal,
+      note: `${goalProjects}: active ${goalDayCount} of ${totalPeriodDays} days`
+    });
+  }
+
+  // 4. Meeting Overhead (less meetings = better)
+  if (weights.meetings > 0) {
+    const meetingSecs = tagSecs['meeting'] || tagSecs['meetings'] || 0;
+    const meetingRatio = totalSecs > 0 ? meetingSecs / totalSecs : 0;
+    const pts = Math.round((1 - Math.min(meetingRatio, 0.6) / 0.6) * weights.meetings);
+    scores.push({
+      label: 'Meeting Overhead',
+      icon: '📞',
+      pts,
+      max: weights.meetings,
+      note: meetingSecs > 0
+        ? `Meetings were ${Math.round(meetingRatio*100)}% of total time`
+        : 'No meeting entries logged'
+    });
+  }
+
+  // 5. Personal Balance
+  if (weights.personal > 0) {
+    const personalDayCount = roleDays.personal.size;
+    const ratio = Math.min(personalDayCount / totalPeriodDays, 1);
+    const pts   = Math.round(ratio * weights.personal);
+    scores.push({
+      label: 'Personal Balance',
+      icon: '🌱',
+      pts,
+      max: weights.personal,
+      note: `Personal time tracked ${personalDayCount} of ${totalPeriodDays} days`
+    });
+  }
+
+  const total = scores.reduce((a,s) => a+s.pts, 0);
+  return { total, breakdown: scores };
 }
 
 // ── Export ──
@@ -2900,6 +3177,7 @@ renderEntries();
 updateHeaderStats();
 renderTagRow();
 updateBackupStatus();
+updateAnalyzeBtn();
 
 
 // ── Backup & Restore ──
@@ -3120,6 +3398,11 @@ function updateStorageInfo() {
   } catch(e) {
     el.textContent = 'Unable to calculate';
   }
+}
+
+function selectRole(el, selectorId) {
+  document.querySelectorAll('#'+selectorId+' .role-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
 }
 
 // ── Settings ──
