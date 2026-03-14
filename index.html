@@ -2673,10 +2673,10 @@ PROJECTS CONFIGURED: ${state.projects.map(p=>`${p.name}${p.recurring?' (daily re
 
     const response = await fetch(PROXY_URL, {
       method: 'POST',
+      mode: 'cors',
       headers: { 'Content-Type': 'application/json' },
-        // No API key needed here — it's securely stored in the Cloudflare Worker
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'gemini-1.5-flash',
         max_tokens: 1000,
         system: `You are a personal productivity coach analyzing someone's time tracking data. 
 The user is an Automation Tester who also does manual feature testing, is preparing for job interviews, and tracks personal life activities.
@@ -2705,8 +2705,12 @@ Keep each item concise — 1-2 sentences max. Be specific to their actual number
     clearInterval(msgInterval);
 
     if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error?.message || 'API error ' + response.status);
+      let errMsg = 'API error ' + response.status;
+      try {
+        const err = await response.json();
+        errMsg = err.error?.message || errMsg;
+      } catch(e) {}
+      throw new Error(errMsg);
     }
 
     const data = await response.json();
@@ -2714,17 +2718,49 @@ Keep each item concise — 1-2 sentences max. Be specific to their actual number
 
     let parsed;
     try {
-      const clean = rawText.replace(/```json|```/g,'').trim();
+      // Strip markdown fences — Gemini often wraps JSON in ```json ... ```
+      let clean = rawText
+        .replace(/^```json\s*/i, '')   // opening ```json
+        .replace(/^```\s*/i, '')        // opening ```
+        .replace(/\s*```$/i, '')         // closing ```
+        .trim();
+
+      // If still not clean, extract JSON object using regex
+      if (!clean.startsWith('{')) {
+        const match = clean.match(/\{[\s\S]*\}/);
+        if (match) clean = match[0];
+      }
+
       parsed = JSON.parse(clean);
+
+      // Validate required fields — fill defaults if missing
+      if (!parsed.summary)   parsed.summary   = 'Analysis complete.';
+      if (!parsed.positives) parsed.positives = [];
+      if (!parsed.warnings)  parsed.warnings  = [];
+      if (!parsed.tips)      parsed.tips      = [];
+      if (typeof parsed.focus_score !== 'number') parsed.focus_score = 50;
+
     } catch(e) {
-      throw new Error('Could not parse AI response. Please try again.');
+      // Last resort — show raw text as a single tip
+      parsed = {
+        summary: 'AI responded but in an unexpected format. Here is the raw insight:',
+        positives: [],
+        warnings: [],
+        tips: [rawText.slice(0, 500)],
+        focus_score: 50
+      };
     }
 
     renderAIResults(parsed);
 
   } catch(err) {
     clearInterval(msgInterval);
-    showAIError(err.message || 'Something went wrong. Please try again.');
+    const msg = err.message || 'Something went wrong. Please try again.';
+    // Network errors show as "Failed to fetch" — give a clearer message
+    const display = msg.toLowerCase().includes('failed to fetch')
+      ? 'Could not reach the server. Check your internet connection and try again. If the problem persists, re-deploy your Cloudflare Worker.'
+      : msg;
+    showAIError(display);
   } finally {
     document.getElementById('aiAnalyzeBtn').disabled = false;
   }
