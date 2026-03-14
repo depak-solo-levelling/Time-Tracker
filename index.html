@@ -1144,6 +1144,14 @@
   }
   .dl-entry-item:hover .entry-edit,
   .dl-entry-item:hover .entry-delete { opacity: 1; }
+
+  .sidebar-total {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--accent3);
+  }
+  .sidebar-card .entry-list { max-height: 520px; }
 </style>
 </head>
 <body>
@@ -1322,7 +1330,14 @@
 
       <!-- Sidebar: recent entries -->
       <div class="sidebar-card">
-        <div class="sidebar-title">Today's Log</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div class="sidebar-title" style="margin-bottom:0">Today's Log</div>
+          <div class="sidebar-total" id="todayLogTotal">0h 00m</div>
+        </div>
+        <input type="text" id="todayLogSearch" class="form-input"
+          placeholder="🔍 Search today..."
+          style="width:100%;padding:7px 12px;font-size:12px;margin-bottom:12px"
+          oninput="renderEntries()" />
         <div class="entry-list" id="entryList">
           <div class="empty">
             <div class="empty-icon">📋</div>
@@ -1789,37 +1804,64 @@ function deleteProject(id) {
 function renderEntries() {
   const list = document.getElementById('entryList');
   const today = new Date(); today.setHours(0,0,0,0);
-  const todayEntries = state.entries.filter(e => e.date >= today.getTime());
+  let todayEntries = state.entries.filter(e => e.date >= today.getTime());
+
+  // Apply search filter
+  const search = (document.getElementById('todayLogSearch')?.value || '').toLowerCase().trim();
+  if (search) {
+    todayEntries = todayEntries.filter(e =>
+      e.name.toLowerCase().includes(search) ||
+      (e.tags||[]).some(t => t.toLowerCase().includes(search)) ||
+      (state.projects.find(p => p.id === e.project)?.name || '').toLowerCase().includes(search)
+    );
+  }
+
+  // Update today total
+  const totalSecs = state.entries.filter(e => e.date >= today.getTime()).reduce((a,e) => a + e.duration, 0)
+    + (state.timer.running ? state.timer.elapsed : 0);
+  const totalEl = document.getElementById('todayLogTotal');
+  if (totalEl) totalEl.textContent = secsToHM(totalSecs);
 
   if (todayEntries.length === 0) {
-    list.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No entries yet.<br>Start tracking!</div></div>`;
+    list.innerHTML = search
+      ? `<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">No entries match.<br>Try a different search.</div></div>`
+      : `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No entries yet.<br>Start tracking!</div></div>`;
+    updateProjectSelects();
     return;
   }
-  list.innerHTML = todayEntries.map(e => {
-    const proj = state.projects.find(p => p.id === e.project);
+
+  // Sort newest first
+  const sorted = [...todayEntries].sort((a,b) => b.date - a.date);
+
+  list.innerHTML = sorted.map(e => {
+    const proj  = state.projects.find(p => p.id === e.project);
     const color = proj ? proj.color : '#6b6b80';
+    const time  = new Date(e.date).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
     const tagsHtml = (e.tags||[]).map(t => {
       const c = state.tagColors[t] || '#b4b4ff';
-      return `<span style="background:${c}22;color:${c};padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600">${t}</span>`;
+      return `<span style="background:${c}22;color:${c};padding:1px 6px;border-radius:10px;font-size:10px;font-weight:600">${t}</span>`;
     }).join('');
-    return `<div class="entry-item">
-      <div class="entry-dot" style="background:${color}"></div>
-      <div class="entry-info">
-        <div class="entry-name">${e.name}</div>
-        <div class="entry-meta" style="gap:4px;flex-wrap:wrap">
-          ${proj ? `<span style="color:${color};font-weight:600">${proj.name}</span>` : '<span style="color:var(--muted)">No project</span>'}
+
+    return `<div class="dl-entry-item">
+      <div class="dl-entry-dot" style="background:${color}"></div>
+      <div class="dl-entry-info">
+        <div class="dl-entry-name">${e.name}</div>
+        <div class="dl-entry-meta">
+          ${proj ? `<span style="color:${color};font-weight:600;font-size:11px">${proj.name}</span>` : '<span style="color:var(--muted);font-size:11px">No project</span>'}
           ${tagsHtml}
+          <span style="color:var(--muted);font-size:11px">${time}</span>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-        <div class="entry-duration">${formatSeconds(e.duration)}</div>
+        <div class="dl-entry-duration">${formatSeconds(e.duration)}</div>
         <div style="display:flex;gap:4px">
-          <button class="entry-edit" onclick="openEditEntry('${e.id}')" title="Edit">✏</button>
-          <button class="entry-delete" onclick="deleteEntry('${e.id}')" title="Delete">✕</button>
+          <button class="entry-edit"   onclick="openEditEntry('${e.id}')" title="Edit">✏</button>
+          <button class="entry-delete" onclick="deleteEntry('${e.id}')"   title="Delete">✕</button>
         </div>
       </div>
     </div>`;
   }).join('');
+
   updateProjectSelects();
 }
 
