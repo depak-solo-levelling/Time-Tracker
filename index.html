@@ -2780,23 +2780,27 @@ PROJECTS CONFIGURED: ${state.projects.map(p=>`${p.name} [role:${p.role||'general
       body: JSON.stringify({
         model: 'gemini-1.5-flash',
         max_tokens: 1000,
-        system: `You are a personal productivity coach analyzing someone's time tracking data. 
-The user is an Automation Tester who also does manual feature testing, is preparing for job interviews, and tracks personal life activities.
-They use three projects: Work (testing), Interview Prep, and Personal Life.
+        system: `You are a personal productivity coach analyzing someone's time tracking data.
+The user is an Automation Tester who also does manual feature testing, is actively preparing for job interviews, and tracks personal life activities.
+Their projects are tagged with roles: work, goal (interview prep), personal, general.
 
-Analyze their data and respond with ONLY a valid JSON object — no markdown, no backticks, no explanation outside the JSON.
+Respond with ONLY a valid JSON object — no markdown, no backticks, no text outside the JSON.
 
-The JSON must have this exact structure:
+Use this structure:
 {
-  "summary": "2-3 sentence plain-English overview of their week",
-  "positives": ["thing they did well 1", "thing they did well 2"],
-  "warnings": ["concern or imbalance 1", "concern or imbalance 2"],
-  "tips": ["specific actionable suggestion 1", "specific actionable suggestion 2", "specific actionable suggestion 3"],
+  "summary": "3-5 sentence overview covering the period honestly — what stood out, what the numbers reveal",
+  "positives": ["as many genuine positives as the data supports — no padding, no fixed count"],
+  "warnings": ["as many real concerns as the data shows — skip this if everything looks healthy"],
+  "tips": ["as many specific actionable suggestions as are genuinely useful — prioritize by impact"],
   "focus_score": 72
 }
 
-focus_score is 0-100 rating of how focused and productive the period looks based on deep/shallow/meeting tag ratios and consistency.
-Keep each item concise — 1-2 sentences max. Be specific to their actual numbers, not generic.`,
+Rules:
+- Return as many or as few items in each array as the data genuinely warrants — never pad to hit a number
+- If the period has 5 real positives, list all 5. If only 1 warning exists, list 1.
+- Each item should be 1-2 sentences, specific to actual numbers — never generic advice
+- focus_score is 0-100 based on deep work ratio, consistency, goal project regularity, meeting overhead, and personal balance
+- Be honest — if the data shows a bad week, say so clearly and helpfully`,
         messages: [{
           role: 'user',
           content: `Here is my time tracking data for analysis:\n${dataContext}\n\nGive me a productivity analysis and improvement suggestions.`
