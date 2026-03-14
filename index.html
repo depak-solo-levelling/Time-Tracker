@@ -2727,11 +2727,31 @@ async function runAIAnalysis() {
 
   // Build context string
   const rangeLabel = {today:'Today',week:'This Week',month:'This Month',all:'All Time',custom:'Custom Range'}[state.currentRange] || 'Selected Period';
-  document.getElementById('aiRangeLabel').textContent = `Analysing: ${rangeLabel} · ${entries.length} entries · ${uniqueDays.length} days`;
+  const inProgressBadge = state.currentRange === 'today' ? ' · 🟢 Day in progress' : '';
+  document.getElementById('aiRangeLabel').textContent = `Analysing: ${rangeLabel} · ${entries.length} entries${inProgressBadge}`;
   document.getElementById('aiRangeLabel').style.display = 'block';
+
+  // Day-in-progress context
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const isToday = state.currentRange === 'today';
+  const dayProgress = isToday
+    ? `DAY STATUS: IN PROGRESS — current time is ${currentHour}:${currentMinute.toString().padStart(2,'0')}. The user is still working. This is a partial day snapshot, not a complete day. Do NOT assume the day is over or draw conclusions based on low hours — the user may log more entries later today.`
+    : `DAY STATUS: COMPLETED PERIOD — analysis covers a finished time range.`;
+
+  // For today, estimate remaining work hours
+  const workdayEnd = 18; // assume 6pm typical end
+  const hoursRemaining = isToday ? Math.max(0, workdayEnd - currentHour - currentMinute/60).toFixed(1) : 0;
+  const todayContext = isToday
+    ? `HOURS LOGGED SO FAR TODAY: ${(totalSecs/3600).toFixed(1)}h | APPROX HOURS REMAINING IN WORKDAY: ~${hoursRemaining}h`
+    : '';
 
   const dataContext = `
 PERIOD: ${rangeLabel}
+${dayProgress}
+${todayContext}
+
 TOTAL TIME TRACKED: ${(totalSecs/3600).toFixed(1)} hours across ${uniqueDays.length} days
 AVERAGE PER DAY: ${(avgPerDay/3600).toFixed(1)} hours
 TOTAL ENTRIES: ${entries.length}
@@ -2800,7 +2820,8 @@ Rules:
 - If the period has 5 real positives, list all 5. If only 1 warning exists, list 1.
 - Each item should be 1-2 sentences, specific to actual numbers — never generic advice
 - focus_score is 0-100 based on deep work ratio, consistency, goal project regularity, meeting overhead, and personal balance
-- Be honest — if the data shows a bad week, say so clearly and helpfully`,
+- Be honest — if the data shows a bad week, say so clearly and helpfully
+- IMPORTANT: If DAY STATUS says IN PROGRESS, treat the data as a partial snapshot. Give mid-day coaching — what has gone well so far, what to focus on for the remaining hours. Never penalize for low total hours on an in-progress day. Focus score should reflect quality not quantity for partial days.`,
         messages: [{
           role: 'user',
           content: `Here is my time tracking data for analysis:\n${dataContext}\n\nGive me a productivity analysis and improvement suggestions.`
