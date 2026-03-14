@@ -1075,6 +1075,75 @@
     .date-sep { display: none; }
     .date-input { min-width: unset; width: 100%; }
   }
+
+  /* ── Daily Activity Log ── */
+  .dl-day-group { margin-bottom: 20px; }
+  .dl-day-group:last-child { margin-bottom: 0; }
+
+  .dl-day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .dl-day-label {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .dl-day-label.dl-today { color: var(--accent); }
+  .dl-day-total {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent3);
+  }
+
+  .dl-entries { display: flex; flex-direction: column; gap: 8px; }
+
+  .dl-entry-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface2);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    transition: border-color 0.2s;
+  }
+  .dl-entry-item:hover { border-color: rgba(124,106,247,0.3); }
+
+  .dl-entry-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dl-entry-info { flex: 1; min-width: 0; }
+  .dl-entry-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+  }
+  .dl-entry-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+  }
+  .dl-entry-duration {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent3);
+    flex-shrink: 0;
+  }
+  .dl-entry-item:hover .entry-edit,
+  .dl-entry-item:hover .entry-delete { opacity: 1; }
 </style>
 </head>
 <body>
@@ -1420,6 +1489,24 @@
         <div style="font-size:32px;opacity:0.4;margin-bottom:8px">🏷</div>
         <div style="font-size:13px">No tagged entries in this period</div>
       </div>
+    </div>
+
+    <!-- DAILY ACTIVITY LOG -->
+    <div class="chart-card" style="margin-top:20px" id="dailyLogSection">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+        <div class="chart-title" style="margin-bottom:0">Daily Activity Log</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="text" id="dailyLogSearch" placeholder="🔍 Search entries..."
+            class="form-input" style="padding:6px 12px;font-size:12px;width:160px"
+            oninput="renderDailyLog(getFilteredEntries())" />
+          <select id="dailyLogProject" class="project-select"
+            style="padding:6px 10px;font-size:12px;min-width:120px"
+            onchange="renderDailyLog(getFilteredEntries())">
+            <option value="">All Projects</option>
+          </select>
+        </div>
+      </div>
+      <div id="dailyLogContainer"></div>
     </div>
   </div>
 </div>
@@ -2049,6 +2136,8 @@ function renderReports() {
   renderBreakdown(entries, totalSecs);
   renderDonut(entries, totalSecs);
   renderTagReport(entries, totalSecs);
+  renderDailyLog(entries);
+  populateDailyLogProjectFilter();
 }
 
 let currentTagView = 'bar';
@@ -2228,6 +2317,104 @@ function renderTagReport(entries, totalSecs) {
         <div style="font-size:11px;color:var(--muted);min-width:30px;text-align:right">${pct}%</div>
       </div>`;
   }).join('');
+}
+
+
+// ── Daily Activity Log ──
+function populateDailyLogProjectFilter() {
+  const sel = document.getElementById('dailyLogProject');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All Projects</option>' +
+    state.projects.map(p => `<option value="${p.id}" ${p.id===cur?'selected':''}>${p.name}</option>`).join('');
+}
+
+function renderDailyLog(entries) {
+  const container = document.getElementById('dailyLogContainer');
+  if (!container) return;
+
+  // Apply search filter
+  const search  = (document.getElementById('dailyLogSearch')?.value || '').toLowerCase().trim();
+  const projFilter = document.getElementById('dailyLogProject')?.value || '';
+
+  let filtered = entries;
+  if (search)     filtered = filtered.filter(e => e.name.toLowerCase().includes(search) || (e.tags||[]).some(t => t.includes(search)));
+  if (projFilter) filtered = filtered.filter(e => e.project === projFilter);
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No entries found.</div></div>`;
+    return;
+  }
+
+  // Group entries by date (most recent first)
+  const groups = {};
+  filtered.forEach(e => {
+    const d = new Date(e.date);
+    const key = d.toDateString();
+    if (!groups[key]) groups[key] = { date: d, entries: [] };
+    groups[key].entries.push(e);
+  });
+
+  // Sort groups by date descending
+  const sorted = Object.values(groups).sort((a, b) => b.date - a.date);
+
+  container.innerHTML = sorted.map(g => {
+    const dayTotal = g.entries.reduce((a, e) => a + e.duration, 0);
+    const isToday = g.date.toDateString() === new Date().toDateString();
+    const isYesterday = g.date.toDateString() === new Date(Date.now()-86400000).toDateString();
+    const dayLabel = isToday ? 'Today' : isYesterday ? 'Yesterday'
+      : g.date.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+
+    // Sort entries within day newest first
+    const dayEntries = [...g.entries].sort((a,b) => b.date - a.date);
+
+    const entriesHtml = dayEntries.map(e => {
+      const proj  = state.projects.find(p => p.id === e.project);
+      const color = proj ? proj.color : '#6b6b80';
+      const tagsHtml = (e.tags||[]).map(t => {
+        const c = state.tagColors[t] || '#b4b4ff';
+        return `<span style="background:${c}22;color:${c};padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600">${t}</span>`;
+      }).join('');
+      const time = new Date(e.date).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+
+      return `<div class="dl-entry-item">
+        <div class="dl-entry-dot" style="background:${color}"></div>
+        <div class="dl-entry-info">
+          <div class="dl-entry-name">${e.name}</div>
+          <div class="dl-entry-meta">
+            ${proj ? `<span style="color:${color};font-weight:600;font-size:11px">${proj.name}</span>` : ''}
+            ${tagsHtml}
+            <span style="color:var(--muted);font-size:11px">${time}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+          <div class="dl-entry-duration">${formatSeconds(e.duration)}</div>
+          <div style="display:flex;gap:4px">
+            <button class="entry-edit"  onclick="openEditEntry('${e.id}');renderReports()" title="Edit">✏</button>
+            <button class="entry-delete" onclick="deleteDailyEntry('${e.id}')" title="Delete">✕</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div class="dl-day-group">
+      <div class="dl-day-header">
+        <div class="dl-day-label ${isToday?'dl-today':''}">${dayLabel}</div>
+        <div class="dl-day-total">${secsToHM(dayTotal)} · ${g.entries.length} ${g.entries.length===1?'entry':'entries'}</div>
+      </div>
+      <div class="dl-entries">${entriesHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function deleteDailyEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  state.entries = state.entries.filter(e => e.id !== id);
+  save();
+  renderEntries();
+  updateHeaderStats();
+  renderReports();
+  showToast('🗑 Entry deleted');
 }
 
 // ── Export ──
