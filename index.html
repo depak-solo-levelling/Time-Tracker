@@ -1584,6 +1584,21 @@
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
   }
+
+  .notif-time-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    margin-top: 6px;
+    outline: none;
+    cursor: pointer;
+    width: fit-content;
+  }
+  .notif-time-input:focus { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -1666,6 +1681,99 @@
         </div>
         <button class="btn btn-ghost btn-sm" onclick="migrateToFile()">↓ Migrate</button>
       </div>
+    </div>
+
+    <!-- NOTIFICATIONS SECTION -->
+    <div class="settings-section">
+      <div class="settings-section-title">🔔 Notifications</div>
+
+      <!-- Permission status -->
+      <div class="backup-status-card" id="notifStatusCard" style="margin-bottom:4px">
+        <div class="backup-status-icon" id="notifStatusIcon">🔔</div>
+        <div style="flex:1">
+          <div class="settings-item-label">Permission</div>
+          <div class="settings-item-sub" id="notifStatusText">Checking...</div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="notifEnableBtn" onclick="requestNotifPermission()" style="display:none">Enable</button>
+      </div>
+
+      <!-- Weekly Review -->
+      <div class="settings-item">
+        <div>
+          <div class="settings-item-label">📊 Weekly Review</div>
+          <div class="settings-item-sub">Sunday reminder to review your week</div>
+          <input type="time" id="notif-weekly-time" value="09:00" class="notif-time-input" onchange="saveNotifSettings()">
+        </div>
+        <label class="toggle-label" style="margin-bottom:0">
+          <input type="checkbox" id="notif-weekly" onchange="saveNotifSettings()">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+
+      <!-- Daily Goal Reminder -->
+      <div class="settings-item">
+        <div>
+          <div class="settings-item-label">🌅 Daily Goal Reminder</div>
+          <div class="settings-item-sub">Morning nudge if no goals set yet</div>
+          <input type="time" id="notif-goals-time" value="08:00" class="notif-time-input" onchange="saveNotifSettings()">
+        </div>
+        <label class="toggle-label" style="margin-bottom:0">
+          <input type="checkbox" id="notif-goals" onchange="saveNotifSettings()">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+
+      <!-- Streak Protection -->
+      <div class="settings-item">
+        <div>
+          <div class="settings-item-label">🔥 Streak Protection</div>
+          <div class="settings-item-sub">Evening alert if streak at risk</div>
+          <input type="time" id="notif-streak-time" value="20:00" class="notif-time-input" onchange="saveNotifSettings()">
+        </div>
+        <label class="toggle-label" style="margin-bottom:0">
+          <input type="checkbox" id="notif-streak" onchange="saveNotifSettings()">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+
+      <!-- Timer Running -->
+      <div class="settings-item">
+        <div>
+          <div class="settings-item-label">⏱ Timer Still Running</div>
+          <div class="settings-item-sub">Alert if timer runs over 2 hours</div>
+        </div>
+        <label class="toggle-label" style="margin-bottom:0">
+          <input type="checkbox" id="notif-timer" onchange="saveNotifSettings()">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+
+      <!-- Interview Prep Nudge -->
+      <div class="settings-item">
+        <div>
+          <div class="settings-item-label">🎯 Interview Prep Nudge</div>
+          <div class="settings-item-sub">Remind if no Goal project logged today</div>
+          <input type="time" id="notif-prep-time" value="19:00" class="notif-time-input" onchange="saveNotifSettings()">
+        </div>
+        <label class="toggle-label" style="margin-bottom:0">
+          <input type="checkbox" id="notif-prep" onchange="saveNotifSettings()">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+
+      <!-- Daily Summary -->
+      <div class="settings-item">
+        <div>
+          <div class="settings-item-label">📋 Daily Summary</div>
+          <div class="settings-item-sub">End of day summary of hours logged</div>
+          <input type="time" id="notif-summary-time" value="21:00" class="notif-time-input" onchange="saveNotifSettings()">
+        </div>
+        <label class="toggle-label" style="margin-bottom:0">
+          <input type="checkbox" id="notif-summary" onchange="saveNotifSettings()">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+
     </div>
 
     <!-- DATA MANAGEMENT SECTION -->
@@ -4029,6 +4137,217 @@ function saveMorningGoals() {
   showToast(`🎯 ${goals.length} goals set — have a great day!`);
 }
 
+
+// ── Notifications ──
+
+const NOTIF_KEY = 'tt_notif_settings';
+
+function getNotifSettings() {
+  return JSON.parse(localStorage.getItem(NOTIF_KEY) || '{}');
+}
+
+function saveNotifSettings() {
+  const settings = {
+    weekly:  { on: document.getElementById('notif-weekly')?.checked,  time: document.getElementById('notif-weekly-time')?.value  || '09:00' },
+    goals:   { on: document.getElementById('notif-goals')?.checked,   time: document.getElementById('notif-goals-time')?.value   || '08:00' },
+    streak:  { on: document.getElementById('notif-streak')?.checked,  time: document.getElementById('notif-streak-time')?.value  || '20:00' },
+    timer:   { on: document.getElementById('notif-timer')?.checked   },
+    prep:    { on: document.getElementById('notif-prep')?.checked,    time: document.getElementById('notif-prep-time')?.value    || '19:00' },
+    summary: { on: document.getElementById('notif-summary')?.checked, time: document.getElementById('notif-summary-time')?.value || '21:00' },
+  };
+  localStorage.setItem(NOTIF_KEY, JSON.stringify(settings));
+  showToast('🔔 Notification settings saved');
+}
+
+function loadNotifSettings() {
+  const s = getNotifSettings();
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+  const setTime = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+
+  set('notif-weekly',  s.weekly?.on);
+  set('notif-goals',   s.goals?.on);
+  set('notif-streak',  s.streak?.on);
+  set('notif-timer',   s.timer?.on);
+  set('notif-prep',    s.prep?.on);
+  set('notif-summary', s.summary?.on);
+
+  setTime('notif-weekly-time',  s.weekly?.time);
+  setTime('notif-goals-time',   s.goals?.time);
+  setTime('notif-streak-time',  s.streak?.time);
+  setTime('notif-prep-time',    s.prep?.time);
+  setTime('notif-summary-time', s.summary?.time);
+}
+
+async function requestNotifPermission() {
+  if (!('Notification' in window)) {
+    showToast('⚠ Notifications not supported on this browser');
+    return;
+  }
+  const result = await Notification.requestPermission();
+  updateNotifStatus();
+  if (result === 'granted') {
+    showToast('✓ Notifications enabled!');
+    // Show a test notification
+    new Notification('Time-Tracker 🎉', {
+      body: 'Notifications are now active! You will receive reminders as configured.',
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-72.png'
+    });
+  } else {
+    showToast('⚠ Permission denied — enable in browser settings');
+  }
+}
+
+function updateNotifStatus() {
+  const icon = document.getElementById('notifStatusIcon');
+  const text = document.getElementById('notifStatusText');
+  const btn  = document.getElementById('notifEnableBtn');
+  if (!icon || !text) return;
+
+  if (!('Notification' in window)) {
+    icon.textContent = '❌';
+    text.textContent = 'Not supported on this browser';
+    return;
+  }
+
+  const perm = Notification.permission;
+  if (perm === 'granted') {
+    icon.textContent = '✅';
+    text.textContent = 'Notifications enabled';
+    if (btn) btn.style.display = 'none';
+  } else if (perm === 'denied') {
+    icon.textContent = '🚫';
+    text.textContent = 'Blocked — enable in browser/Android settings';
+    if (btn) btn.style.display = 'none';
+  } else {
+    icon.textContent = '🔔';
+    text.textContent = 'Permission not granted yet';
+    if (btn) btn.style.display = '';
+  }
+}
+
+function sendNotification(title, body, tag) {
+  if (Notification.permission !== 'granted') return;
+  new Notification(title, {
+    body,
+    icon:  './icons/icon-192.png',
+    badge: './icons/icon-72.png',
+    tag,
+    renotify: false,
+    silent: false
+  });
+}
+
+function checkAllNotifications() {
+  if (Notification.permission !== 'granted') return;
+  const s    = getNotifSettings();
+  const now  = new Date();
+  const hhmm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayKey = `notif_sent_${today.getTime()}`;
+  const sent = JSON.parse(localStorage.getItem(todayKey) || '{}');
+
+  // ── 1. Weekly Review (Sunday only) ──
+  if (s.weekly?.on && now.getDay() === 0 && hhmm === s.weekly.time && !sent.weekly) {
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7); weekAgo.setHours(0,0,0,0);
+    const weekEntries = state.entries.filter(e => e.date >= weekAgo.getTime());
+    const weekSecs    = weekEntries.reduce((a,e) => a+e.duration, 0);
+    const days        = new Set(weekEntries.map(e => new Date(e.date).toDateString())).size;
+    sendNotification(
+      '📊 Weekly Review Time!',
+      `This week: ${(weekSecs/3600).toFixed(1)}h logged across ${days} days. Tap to review your report.`,
+      'weekly-review'
+    );
+    sent.weekly = true;
+  }
+
+  // ── 2. Daily Goal Reminder ──
+  if (s.goals?.on && hhmm === s.goals.time && !sent.goals) {
+    const goals = loadTodayGoals();
+    if (goals.length === 0) {
+      sendNotification(
+        '🌅 Plan Your Day!',
+        "You haven't set today's goals yet. A few minutes of planning = a focused day.",
+        'daily-goals'
+      );
+      sent.goals = true;
+    }
+  }
+
+  // ── 3. Streak Protection ──
+  if (s.streak?.on && hhmm === s.streak.time && !sent.streak) {
+    const streakData = calculateStreaks();
+    const atRisk = Object.entries(streakData).filter(([role, s]) =>
+      s.current > 0 && !s.todayDone && role !== 'overall'
+    );
+    if (atRisk.length > 0) {
+      const names = atRisk.map(([,s]) => `${s.icon} ${s.label} (${s.current}d)`).join(', ');
+      sendNotification(
+        '🔥 Streaks At Risk!',
+        `Log time before midnight to protect: ${names}`,
+        'streak-protection'
+      );
+      sent.streak = true;
+    }
+  }
+
+  // ── 4. Timer Still Running (check every minute) ──
+  if (s.timer?.on && state.timer.running) {
+    const runningMins = Math.floor(state.timer.elapsed / 60);
+    if (runningMins >= 120 && !sent.timer_2h) {
+      sendNotification(
+        '⏱ Timer Still Running!',
+        `Your timer has been running for ${Math.floor(runningMins/60)}h ${runningMins%60}m. Still working or did you forget to stop?`,
+        'timer-running'
+      );
+      sent.timer_2h = true;
+    }
+  }
+
+  // ── 5. Interview Prep Nudge ──
+  if (s.prep?.on && hhmm === s.prep.time && !sent.prep) {
+    const goalProjects = state.projects.filter(p => p.role === 'goal').map(p => p.id);
+    const prepToday = state.entries.some(e =>
+      goalProjects.includes(e.project) && e.date >= today.getTime()
+    );
+    if (!prepToday) {
+      sendNotification(
+        '🎯 Interview Prep Reminder',
+        "No goal project logged today. Even 30 minutes of focused prep makes a difference. Keep the momentum!",
+        'prep-nudge'
+      );
+      sent.prep = true;
+    }
+  }
+
+  // ── 6. Daily Summary ──
+  if (s.summary?.on && hhmm === s.summary.time && !sent.summary) {
+    const todayEntries = state.entries.filter(e => e.date >= today.getTime());
+    const totalSecs    = todayEntries.reduce((a,e) => a+e.duration, 0);
+    const projCount    = new Set(todayEntries.filter(e=>e.project).map(e=>e.project)).size;
+    const goals        = loadTodayGoals();
+    const doneGoals    = goals.filter(g=>g.done).length;
+    sendNotification(
+      '📋 Daily Summary',
+      `Today: ${(totalSecs/3600).toFixed(1)}h across ${projCount} projects · ${doneGoals}/${goals.length} goals completed`,
+      'daily-summary'
+    );
+    sent.summary = true;
+  }
+
+  // Save sent state
+  localStorage.setItem(todayKey, JSON.stringify(sent));
+}
+
+// Start notification checker — runs every minute
+let notifInterval = null;
+function startNotifChecker() {
+  if (notifInterval) clearInterval(notifInterval);
+  notifInterval = setInterval(checkAllNotifications, 60000);
+  // Also check immediately
+  setTimeout(checkAllNotifications, 3000);
+}
+
 // ── Export ──
 function exportCSV() {
   const entries = getFilteredEntries();
@@ -4096,6 +4415,7 @@ updateBackupStatus();
 updateAnalyzeBtn();
 renderStreaks();
 checkMorningPopup();
+startNotifChecker();
 
 
 // ── Backup & Restore ──
@@ -4331,6 +4651,8 @@ function toggleSettings() {
   if (document.getElementById('settingsDrawer').classList.contains('show')) {
     updateBackupStatus();
     updateStorageInfo();
+    updateNotifStatus();
+    loadNotifSettings();
   }
 }
 
