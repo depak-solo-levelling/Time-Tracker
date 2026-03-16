@@ -1759,6 +1759,244 @@
     stroke: var(--accent2) !important;
     filter: drop-shadow(0 0 8px var(--accent2));
   }
+
+  /* Goal sub-tabs */
+  .goal-subtabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 20px;
+    width: fit-content;
+  }
+  .goal-subtab {
+    padding: 7px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    transition: all 0.2s;
+    border: none;
+    background: none;
+    font-family: 'Syne', sans-serif;
+    white-space: nowrap;
+  }
+  .goal-subtab.active { background: var(--accent); color: white; }
+  .goal-subtab:hover:not(.active) { color: var(--text); }
+
+  /* Milestone cards */
+  .milestone-project-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .milestone-proj-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .milestone-proj-name {
+    font-size: 15px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .milestone-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .milestone-item:last-child { border-bottom: none; }
+  .milestone-cb {
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    transition: all 0.2s;
+    margin-top: 1px;
+  }
+  .milestone-cb.done { background: var(--success); border-color: var(--success); color: #000; }
+  .milestone-cb:hover:not(.done) { border-color: var(--accent); }
+  .milestone-text {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .milestone-text.done-text { text-decoration: line-through; color: var(--muted); }
+  .milestone-hours {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent3);
+    flex-shrink: 0;
+  }
+  .milestone-add-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  /* Interview Prep */
+  .prep-overview {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .prep-stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+  }
+  .prep-stat-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .prep-stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+  .prep-topic-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 10px;
+    transition: border-color 0.2s;
+  }
+  .prep-topic-card:hover { border-color: rgba(124,106,247,0.3); }
+  .prep-topic-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .prep-topic-name { font-size: 13px; font-weight: 700; }
+  .prep-topic-status {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .status-not-started { background: rgba(107,107,128,0.15); color: var(--muted); }
+  .status-in-progress { background: rgba(247,199,106,0.15); color: #f7c76a; }
+  .status-ready       { background: rgba(106,247,160,0.15); color: var(--success); }
+
+  .prep-confidence {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .conf-star {
+    font-size: 16px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    opacity: 0.3;
+  }
+  .conf-star.filled { opacity: 1; }
+  .conf-star:hover  { transform: scale(1.2); }
+
+  .prep-progress-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .prep-progress-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .prep-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+
+  .prep-section-title {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 20px 0 10px;
+  }
+
+  /* Question bank */
+  .question-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .q-cb {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    cursor: pointer;
+    margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    transition: all 0.2s;
+  }
+  .q-cb.done { background: var(--success); border-color: var(--success); color: #000; }
+
+  /* Company tracker */
+  .company-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .company-status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .company-name { font-size: 13px; font-weight: 700; flex: 1; }
+  .company-stage {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .stage-target   { background: rgba(124,106,247,0.15); color: var(--accent); }
+  .stage-applied  { background: rgba(247,199,106,0.15); color: #f7c76a; }
+  .stage-interview{ background: rgba(247,145,106,0.15); color: var(--accent2); }
+  .stage-offer    { background: rgba(106,247,160,0.15); color: var(--success); }
+  .stage-rejected { background: rgba(247,106,106,0.15); color: var(--danger); }
+
+  @media (max-width: 768px) {
+    .prep-overview { grid-template-columns: 1fr 1fr; }
+    .goal-subtabs { width: 100%; }
+    .goal-subtab { flex: 1; text-align: center; font-size: 11px; padding: 7px 8px; }
+  }
 </style>
 </head>
 <body>
@@ -2095,6 +2333,16 @@
   <!-- GOALS PANEL -->
   <div class="panel" id="panel-goals">
 
+    <!-- Goals sub-tabs -->
+    <div class="goal-subtabs">
+      <button class="goal-subtab active" id="gst-daily"     onclick="switchGoalTab('daily')">📋 Today</button>
+      <button class="goal-subtab"        id="gst-milestones" onclick="switchGoalTab('milestones')">🏁 Milestones</button>
+      <button class="goal-subtab"        id="gst-prep"       onclick="switchGoalTab('prep')">🎯 Interview Prep</button>
+    </div>
+
+    <!-- ── DAILY GOALS TAB ── -->
+    <div id="gtab-daily">
+
     <!-- Morning check-in header -->
     <div class="goals-header">
       <div>
@@ -2159,6 +2407,19 @@
       <button class="btn btn-ghost btn-sm" onclick="showEOD()">📊 Reality Check</button>
       <button class="btn btn-ghost btn-sm" onclick="clearTodayGoals()" style="color:var(--muted)">Clear Today</button>
     </div>
+
+    </div><!-- end gtab-daily -->
+
+    <!-- ── MILESTONES TAB ── -->
+    <div id="gtab-milestones" style="display:none">
+      <div id="milestonesContent"></div>
+    </div>
+
+    <!-- ── INTERVIEW PREP TAB ── -->
+    <div id="gtab-prep" style="display:none">
+      <div id="prepContent"></div>
+    </div>
+
   </div>
 
   <!-- PROJECTS PANEL -->
@@ -4818,6 +5079,365 @@ function skipBreak() {
   const ring = document.getElementById('timerRing');
   ring?.classList.remove('pomo-break','pomo-long-break');
   startNextSession();
+}
+
+
+// ── Goal Sub-tabs ──
+function switchGoalTab(tab) {
+  ['daily','milestones','prep'].forEach(t => {
+    document.getElementById('gtab-'+t).style.display = t===tab ? 'block' : 'none';
+    document.getElementById('gst-'+t).classList.toggle('active', t===tab);
+  });
+  if (tab==='milestones') renderMilestones();
+  if (tab==='prep')       renderPrepTracker();
+}
+
+// ── Milestone Tracker ──
+function getMilestones() {
+  return JSON.parse(localStorage.getItem('tt_milestones') || '{}');
+}
+function saveMilestones(data) {
+  localStorage.setItem('tt_milestones', JSON.stringify(data));
+}
+
+function renderMilestones() {
+  const container = document.getElementById('milestonesContent');
+  if (!container) return;
+  const goalProjects = state.projects.filter(p => (p.role||'general') === 'goal');
+
+  if (goalProjects.length === 0) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">🏁</div>
+      <div class="empty-text">No Goal projects yet.<br>Create a project with role 🎯 Goal first.</div></div>`;
+    return;
+  }
+
+  const milestones = getMilestones();
+  container.innerHTML = goalProjects.map(p => {
+    const pMilestones = milestones[p.id] || [];
+    const done  = pMilestones.filter(m => m.done).length;
+    const total = pMilestones.length;
+    const pct   = total > 0 ? Math.round(done/total*100) : 0;
+
+    // Hours logged from entries
+    const loggedSecs = state.entries.filter(e => e.project===p.id).reduce((a,e)=>a+e.duration,0);
+    const loggedHrs  = (loggedSecs/3600).toFixed(1);
+
+    const pctColor = pct>=70?'var(--success)':pct>=40?'var(--accent2)':'var(--accent)';
+
+    const milestoneRows = pMilestones.map((m,i) => `
+      <div class="milestone-item">
+        <div class="milestone-cb ${m.done?'done':''}" onclick="toggleMilestone('${p.id}',${i})">
+          ${m.done?'✓':''}
+        </div>
+        <div class="milestone-text ${m.done?'done-text':''}">${m.text}</div>
+        <div class="milestone-hours">${m.targetHrs?m.targetHrs+'h':''}</div>
+        <button onclick="deleteMilestone('${p.id}',${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;opacity:0;transition:opacity 0.2s" class="ms-del">✕</button>
+      </div>`).join('');
+
+    return `<div class="milestone-project-card">
+      <div class="milestone-proj-header">
+        <div class="milestone-proj-name">
+          <span style="color:${p.color}">${p.name}</span>
+          <span class="role-badge role-badge-goal">🎯 Goal</span>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'DM Mono',monospace;font-size:18px;color:${pctColor}">${pct}%</div>
+          <div style="font-size:11px;color:var(--muted)">${done}/${total} done · ${loggedHrs}h logged</div>
+        </div>
+      </div>
+
+      <!-- Overall progress bar -->
+      <div style="height:6px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:16px">
+        <div style="height:100%;width:${pct}%;background:${pctColor};border-radius:4px;transition:width 0.6s ease"></div>
+      </div>
+
+      ${milestoneRows || `<div style="color:var(--muted);font-size:13px;padding:8px 0">No milestones yet — add your first step below.</div>`}
+
+      <!-- Add milestone -->
+      <div class="milestone-add-row">
+        <input class="form-input" id="ms-input-${p.id}" placeholder="Add a milestone..."
+          style="flex:1;padding:8px 12px;font-size:13px"
+          onkeydown="if(event.key==='Enter')addMilestone('${p.id}')" />
+        <input class="form-input" id="ms-hrs-${p.id}" type="number" placeholder="hrs"
+          style="width:60px;padding:8px 10px;font-size:13px;text-align:center" />
+        <button class="btn btn-primary btn-sm" onclick="addMilestone('${p.id}')">+ Add</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Add hover effect for delete buttons
+  container.querySelectorAll('.milestone-item').forEach(item => {
+    item.addEventListener('mouseenter', () => { const d=item.querySelector('.ms-del'); if(d) d.style.opacity='1'; });
+    item.addEventListener('mouseleave', () => { const d=item.querySelector('.ms-del'); if(d) d.style.opacity='0'; });
+  });
+}
+
+function addMilestone(projectId) {
+  const input = document.getElementById('ms-input-'+projectId);
+  const hrsEl = document.getElementById('ms-hrs-'+projectId);
+  const text  = input?.value.trim();
+  if (!text) { showToast('⚠ Enter milestone text'); return; }
+  const data = getMilestones();
+  if (!data[projectId]) data[projectId] = [];
+  data[projectId].push({ text, targetHrs: parseFloat(hrsEl?.value)||0, done:false, createdAt:Date.now() });
+  saveMilestones(data);
+  if (input) input.value = '';
+  if (hrsEl) hrsEl.value = '';
+  renderMilestones();
+  showToast('🏁 Milestone added');
+}
+
+function toggleMilestone(projectId, idx) {
+  const data = getMilestones();
+  if (!data[projectId]?.[idx]) return;
+  data[projectId][idx].done = !data[projectId][idx].done;
+  if (data[projectId][idx].done) data[projectId][idx].completedAt = Date.now();
+  saveMilestones(data);
+  renderMilestones();
+  if (data[projectId][idx].done) showToast('✅ Milestone complete!');
+}
+
+function deleteMilestone(projectId, idx) {
+  const data = getMilestones();
+  data[projectId]?.splice(idx,1);
+  saveMilestones(data);
+  renderMilestones();
+}
+
+// ── Interview Prep Tracker ──
+const PREP_TOPICS = [
+  { id:'manual',    name:'Manual Testing',        icon:'🧪', targetHrs:8  },
+  { id:'selenium',  name:'Selenium WebDriver',     icon:'🤖', targetHrs:15 },
+  { id:'framework', name:'Test Frameworks',        icon:'🏗',  targetHrs:10 },
+  { id:'api',       name:'API Testing',            icon:'🔌', targetHrs:8  },
+  { id:'java',      name:'Java / Programming',     icon:'☕', targetHrs:12 },
+  { id:'cicd',      name:'CI/CD & DevOps Tools',   icon:'⚙',  targetHrs:6  },
+  { id:'sql',       name:'SQL & Databases',        icon:'🗃',  targetHrs:5  },
+  { id:'behavioural',name:'Behavioural Questions', icon:'💬', targetHrs:4  },
+];
+
+function getPrepData() {
+  return JSON.parse(localStorage.getItem('tt_prep_data') || '{}');
+}
+function savePrepData(data) {
+  localStorage.setItem('tt_prep_data', JSON.stringify(data));
+}
+function getQuestions() {
+  return JSON.parse(localStorage.getItem('tt_prep_questions') || '[]');
+}
+function saveQuestions(q) {
+  localStorage.setItem('tt_prep_questions', JSON.stringify(q));
+}
+function getCompanies() {
+  return JSON.parse(localStorage.getItem('tt_prep_companies') || '[]');
+}
+function saveCompanies(c) {
+  localStorage.setItem('tt_prep_companies', JSON.stringify(c));
+}
+
+function setTopicConfidence(topicId, stars) {
+  const data = getPrepData();
+  if (!data[topicId]) data[topicId] = {};
+  data[topicId].confidence = stars;
+  savePrepData(data);
+  renderPrepTracker();
+}
+
+function setTopicStatus(topicId, status) {
+  const data = getPrepData();
+  if (!data[topicId]) data[topicId] = {};
+  data[topicId].status = status;
+  savePrepData(data);
+  renderPrepTracker();
+}
+
+function renderPrepTracker() {
+  const container = document.getElementById('prepContent');
+  if (!container) return;
+  const data      = getPrepData();
+  const questions = getQuestions();
+  const companies = getCompanies();
+
+  // Get logged hours per topic from tags
+  const totalPrepSecs = state.entries.filter(e => {
+    const proj = state.projects.find(p=>p.id===e.project);
+    return proj?.role === 'goal';
+  }).reduce((a,e)=>a+e.duration,0);
+
+  // Overall stats
+  const readyTopics    = PREP_TOPICS.filter(t => (data[t.id]?.status||'not_started')==='ready').length;
+  const totalTopics    = PREP_TOPICS.length;
+  const avgConf        = PREP_TOPICS.reduce((a,t)=>a+(data[t.id]?.confidence||0),0) / totalTopics;
+  const readinessPct   = Math.round((readyTopics/totalTopics*0.5 + (avgConf/5)*0.5)*100);
+  const readColor      = readinessPct>=70?'var(--success)':readinessPct>=40?'var(--accent2)':'var(--accent)';
+  const doneQs         = questions.filter(q=>q.done).length;
+
+  container.innerHTML = `
+    <!-- Overview stats -->
+    <div class="prep-overview">
+      <div class="prep-stat-card">
+        <div class="prep-stat-val" style="color:${readColor}">${readinessPct}%</div>
+        <div class="prep-stat-label">Readiness</div>
+      </div>
+      <div class="prep-stat-card">
+        <div class="prep-stat-val" style="color:var(--accent3)">${(totalPrepSecs/3600).toFixed(1)}h</div>
+        <div class="prep-stat-label">Hours Logged</div>
+      </div>
+      <div class="prep-stat-card">
+        <div class="prep-stat-val" style="color:var(--accent2)">${doneQs}/${questions.length}</div>
+        <div class="prep-stat-label">Questions</div>
+      </div>
+    </div>
+
+    <!-- Overall readiness bar -->
+    <div style="margin-bottom:20px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:700">Overall Readiness</div>
+        <div style="font-size:12px;font-weight:700;color:${readColor}">${readinessPct}% — ${readinessPct>=70?'Ready to apply!':readinessPct>=40?'Getting there...':'Keep going!'}</div>
+      </div>
+      <div style="height:8px;background:var(--surface2);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${readinessPct}%;background:${readColor};border-radius:4px;transition:width 0.8s ease"></div>
+      </div>
+    </div>
+
+    <!-- Topic cards -->
+    <div class="prep-section-title">📚 Topics</div>
+    ${PREP_TOPICS.map(t => {
+      const topicData  = data[t.id] || {};
+      const confidence = topicData.confidence || 0;
+      const status     = topicData.status     || 'not_started';
+      const statusLabels = { not_started:'Not Started', in_progress:'In Progress', ready:'Ready ✓' };
+      const statusClass  = { not_started:'status-not-started', in_progress:'status-in-progress', ready:'status-ready' };
+      const confPct    = confidence / 5 * 100;
+      const confColor  = confidence>=4?'var(--success)':confidence>=2?'var(--accent2)':'var(--muted)';
+
+      return `<div class="prep-topic-card">
+        <div class="prep-topic-header">
+          <div class="prep-topic-name">${t.icon} ${t.name}</div>
+          <select class="project-select" style="padding:4px 8px;font-size:11px;width:fit-content"
+            onchange="setTopicStatus('${t.id}',this.value)">
+            <option value="not_started" ${status==='not_started'?'selected':''}>Not Started</option>
+            <option value="in_progress" ${status==='in_progress'?'selected':''}>In Progress</option>
+            <option value="ready"       ${status==='ready'?'selected':''}>Ready ✓</option>
+          </select>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Confidence</div>
+        <div class="prep-confidence">
+          ${[1,2,3,4,5].map(s=>`<span class="conf-star ${s<=confidence?'filled':''}"
+            onclick="setTopicConfidence('${t.id}',${s})">★</span>`).join('')}
+          <span style="font-size:11px;color:${confColor};margin-left:4px">${
+            ['','Beginner','Familiar','Comfortable','Confident','Expert'][confidence]||''
+          }</span>
+        </div>
+        <div class="prep-progress-row">
+          <div class="prep-progress-bar">
+            <div class="prep-progress-fill" style="width:${confPct}%;background:${confColor}"></div>
+          </div>
+          <span>Target: ${t.targetHrs}h</span>
+        </div>
+      </div>`;
+    }).join('')}
+
+    <!-- Question Bank -->
+    <div class="prep-section-title">❓ Question Bank</div>
+    <div id="questionList">
+      ${questions.map((q,i) => `
+        <div class="question-item">
+          <div class="q-cb ${q.done?'done':''}" onclick="toggleQuestion(${i})">${q.done?'✓':''}</div>
+          <div style="flex:1;${q.done?'text-decoration:line-through;color:var(--muted)':''}">${q.text}</div>
+          <span style="font-size:10px;color:var(--muted);flex-shrink:0">${q.topic||''}</span>
+          <button onclick="deleteQuestion(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;flex-shrink:0">✕</button>
+        </div>`).join('') || '<div style="color:var(--muted);font-size:13px;padding:8px">No questions logged yet.</div>'}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <input class="form-input" id="qInput" placeholder="Add a question you've been asked..." style="flex:1;padding:8px 12px;font-size:13px"
+        onkeydown="if(event.key==='Enter')addQuestion()" />
+      <button class="btn btn-primary btn-sm" onclick="addQuestion()">+ Add</button>
+    </div>
+
+    <!-- Company Tracker -->
+    <div class="prep-section-title">🏢 Companies</div>
+    <div id="companyList">
+      ${companies.map((c,i) => {
+        const stageColors = {target:'#7c6af7',applied:'#f7c76a',interview:'#f7916a',offer:'#6af7a0',rejected:'#f76a6a'};
+        const stageClass  = {target:'stage-target',applied:'stage-applied',interview:'stage-interview',offer:'stage-offer',rejected:'stage-rejected'};
+        return `<div class="company-card">
+          <div class="company-status-dot" style="background:${stageColors[c.stage]||'#6b6b80'}"></div>
+          <div class="company-name">${c.name}</div>
+          <div style="font-size:11px;color:var(--muted);flex:1">${c.role||''}</div>
+          <select class="project-select" style="padding:4px 8px;font-size:11px;width:fit-content"
+            onchange="updateCompanyStage(${i},this.value)">
+            <option value="target"    ${c.stage==='target'   ?'selected':''}>🎯 Targeting</option>
+            <option value="applied"   ${c.stage==='applied'  ?'selected':''}>📤 Applied</option>
+            <option value="interview" ${c.stage==='interview'?'selected':''}>🎤 Interview</option>
+            <option value="offer"     ${c.stage==='offer'    ?'selected':''}>🎉 Offer</option>
+            <option value="rejected"  ${c.stage==='rejected' ?'selected':''}>❌ Rejected</option>
+          </select>
+          <button onclick="deleteCompany(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px">✕</button>
+        </div>`;
+      }).join('') || '<div style="color:var(--muted);font-size:13px;padding:8px">No companies added yet.</div>'}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <input class="form-input" id="companyInput" placeholder="Company name..." style="flex:1;padding:8px 12px;font-size:13px"
+        onkeydown="if(event.key==='Enter')addCompany()" />
+      <input class="form-input" id="roleInput" placeholder="Role..." style="width:140px;padding:8px 12px;font-size:13px" />
+      <button class="btn btn-primary btn-sm" onclick="addCompany()">+ Add</button>
+    </div>
+  `;
+}
+
+function addQuestion() {
+  const input = document.getElementById('qInput');
+  const text  = input?.value.trim();
+  if (!text) return;
+  const questions = getQuestions();
+  questions.push({ text, done:false, createdAt:Date.now() });
+  saveQuestions(questions);
+  if (input) input.value = '';
+  renderPrepTracker();
+  showToast('❓ Question added');
+}
+
+function toggleQuestion(idx) {
+  const questions = getQuestions();
+  questions[idx].done = !questions[idx].done;
+  saveQuestions(questions);
+  renderPrepTracker();
+}
+
+function deleteQuestion(idx) {
+  const questions = getQuestions().filter((_,i) => i!==idx);
+  saveQuestions(questions);
+  renderPrepTracker();
+}
+
+function addCompany() {
+  const nameEl = document.getElementById('companyInput');
+  const roleEl = document.getElementById('roleInput');
+  const name   = nameEl?.value.trim();
+  if (!name) return;
+  const companies = getCompanies();
+  companies.push({ name, role: roleEl?.value.trim()||'', stage:'target', createdAt:Date.now() });
+  saveCompanies(companies);
+  if (nameEl) nameEl.value = '';
+  if (roleEl) roleEl.value = '';
+  renderPrepTracker();
+  showToast('🏢 Company added');
+}
+
+function updateCompanyStage(idx, stage) {
+  const companies = getCompanies();
+  companies[idx].stage = stage;
+  saveCompanies(companies);
+  renderPrepTracker();
+  const labels = {target:'Targeting',applied:'Applied',interview:'Interview stage',offer:'🎉 Offer!',rejected:'Rejected'};
+  showToast(labels[stage]||stage);
+}
+
+function deleteCompany(idx) {
+  const companies = getCompanies().filter((_,i) => i!==idx);
+  saveCompanies(companies);
+  renderPrepTracker();
 }
 
 // ── Export ──
