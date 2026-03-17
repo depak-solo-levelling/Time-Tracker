@@ -2962,11 +2962,34 @@ function toggleTimer() {
 function tickTimer() {
   const elapsed = Math.floor((Date.now() - state.timer.start) / 1000);
   state.timer.elapsed = elapsed;
-  document.getElementById('timerDisplay').textContent = formatSeconds(elapsed);
-  // ring animation (cycles every 60s)
-  const pct = (elapsed % 60) / 60;
-  document.getElementById('timerRing').style.strokeDashoffset = 565 - (565 * pct);
-  updateHeaderStats();
+
+  if (pomoState.active) {
+    // ── Pomodoro countdown mode ──
+    const s        = getPomoSettings();
+    const workSecs = s.work * 60;
+    const remaining = Math.max(0, workSecs - elapsed);
+
+    document.getElementById('timerDisplay').textContent = formatMMSS(remaining);
+
+    // Ring fills as time runs out
+    const pct = elapsed / workSecs;
+    document.getElementById('timerRing').style.strokeDashoffset = 565 - (565 * Math.min(pct, 1));
+
+    updateHeaderStats();
+
+    // Session complete
+    if (remaining === 0) {
+      clearInterval(timerInterval);
+      onPomoSessionComplete();
+    }
+  } else {
+    // ── Normal count-up mode ──
+    document.getElementById('timerDisplay').textContent = formatSeconds(elapsed);
+    // Ring cycles every 60 seconds
+    const pct = (elapsed % 60) / 60;
+    document.getElementById('timerRing').style.strokeDashoffset = 565 - (565 * pct);
+    updateHeaderStats();
+  }
 }
 
 function stopTimer(save_entry) {
@@ -5080,37 +5103,7 @@ function formatMMSS(secs) {
   return `${m}:${s}`;
 }
 
-// Override tickTimer for Pomodoro countdown
-const _originalTickTimer = tickTimer;
-
-function tickTimer() {
-  if (!pomoState.active) {
-    _originalTickTimer();
-    return;
-  }
-
-  // Pomodoro countdown mode
-  const s        = getPomoSettings();
-  const workSecs = s.work * 60;
-  const elapsed  = Math.floor((Date.now() - state.timer.start) / 1000);
-  state.timer.elapsed = elapsed;
-  const remaining = Math.max(0, workSecs - elapsed);
-
-  // Countdown display
-  document.getElementById('timerDisplay').textContent = formatMMSS(remaining);
-
-  // Ring fills as time DECREASES (countdown)
-  const pct = elapsed / workSecs;
-  document.getElementById('timerRing').style.strokeDashoffset = 565 - (565 * Math.min(pct, 1));
-
-  updateHeaderStats();
-
-  // Session complete!
-  if (remaining === 0) {
-    clearInterval(timerInterval);
-    onPomoSessionComplete();
-  }
-}
+// tickTimer handles both normal and Pomodoro modes
 
 function onPomoSessionComplete() {
   const s    = getPomoSettings();
