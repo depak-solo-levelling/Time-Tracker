@@ -2980,22 +2980,33 @@ function toggleTimer() {
     state.timer.running = true;
     state.timer.start   = Date.now() - state.timer.elapsed * 1000;
 
-    // Cache work duration for pomodoro so we don't read DOM every tick
     if (pomoState.active) {
       const s = getPomoSettings();
       pomoState.workSecs = s.work * 60;
       document.getElementById('timerDisplay').textContent = formatMMSS(pomoState.workSecs);
+      // In pomo mode hide Stop&Save — session ends automatically
+      document.getElementById('startBtn').textContent = '⏸ Abandon Session';
+      document.getElementById('startBtn').style.background = 'var(--danger)';
+    } else {
+      document.getElementById('startBtn').textContent = '⏸ Stop & Save';
+      document.getElementById('startBtn').style.background = 'var(--accent2)';
     }
 
     timerInterval = setInterval(tickTimer, 1000);
-    document.getElementById('startBtn').textContent = '⏸ Stop & Save';
-    document.getElementById('startBtn').style.background = 'var(--accent2)';
     document.getElementById('discardBtn').style.display = '';
     document.getElementById('runningInd').classList.add('show');
     const indText = document.getElementById('runningIndText');
     if (indText) indText.textContent = pomoState.active ? '🍅 Focus session running' : 'Recording time';
   } else {
-    stopTimer(true);
+    if (pomoState.active) {
+      // In pomo mode, Stop = abandon session (no save)
+      if (confirm('Abandon this Pomodoro session? Time will not be logged.')) {
+        stopTimer(false);
+        showToast('Session abandoned');
+      }
+    } else {
+      stopTimer(true);
+    }
   }
 }
 
@@ -3039,15 +3050,24 @@ function stopTimer(save_entry) {
     addEntry({ name, project, tags: [...state.selectedTags], duration: state.timer.elapsed, billable: true });
   }
   state.timer = { running: false, start: null, elapsed: 0 };
-  document.getElementById('timerDisplay').textContent = '00:00:00';
+  // Reset display based on mode
+  if (pomoState && pomoState.active) {
+    const s = getPomoSettings();
+    pomoState.workSecs = s.work * 60;
+    document.getElementById('timerDisplay').textContent = formatMMSS(pomoState.workSecs);
+  } else {
+    document.getElementById('timerDisplay').textContent = '00:00:00';
+  }
   document.getElementById('timerRing').style.strokeDashoffset = 565;
   document.getElementById('startBtn').textContent = '▶ Start';
   document.getElementById('startBtn').style.background = '';
   document.getElementById('discardBtn').style.display = 'none';
   document.getElementById('runningInd').classList.remove('show');
-  document.getElementById('taskName').value = '';
-  document.querySelectorAll('.tag.selected').forEach(t => t.classList.remove('selected'));
-  state.selectedTags = [];
+  if (!pomoState?.active) {
+    document.getElementById('taskName').value = '';
+    document.querySelectorAll('.tag.selected').forEach(t => t.classList.remove('selected'));
+    state.selectedTags = [];
+  }
 }
 
 function discardTimer() {
