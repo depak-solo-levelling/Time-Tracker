@@ -3011,35 +3011,165 @@ function toggleTimer() {
 }
 
 function tickTimer() {
-  const elapsed = Math.floor((Date.now() - state.timer.start) / 1000);
-  state.timer.elapsed = elapsed;
+  try {
+    const elapsed = Math.floor((Date.now() - state.timer.start) / 1000);
+    state.timer.elapsed = elapsed;
 
-  if (pomoState && pomoState.active) {
-    // ── Pomodoro countdown mode ──
-    const workSecs  = pomoState.workSecs || 25 * 60;
-    const remaining = Math.max(0, workSecs - elapsed);
+    if (pomoState && pomoState.active) {
+      const workSecs  = pomoState.workSecs || 25 * 60;
+      const remaining = Math.max(0, workSecs - elapsed);
 
-    document.getElementById('timerDisplay').textContent = formatMMSS(remaining);
+      const display = document.getElementById('timerDisplay');
+      if (display) display.textContent = formatMMSS(remaining);
 
-    // Ring fills as session progresses
-    const pct = Math.min(elapsed / workSecs, 1);
-    document.getElementById('timerRing').style.strokeDashoffset = 565 - (565 * pct);
+      const pct = Math.min(elapsed / workSecs, 1);
+      const ring = document.getElementById('timerRing');
+      if (ring) ring.style.strokeDashoffset = 565 - (565 * pct);
 
-    updateHeaderStats();
+      updateHeaderStats();
 
-    // Session complete when countdown hits 0
-    if (remaining <= 0) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-      setTimeout(onPomoSessionComplete, 200);
+      if (remaining <= 0 && timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        pomoCompleteSession();
+      }
+    } else {
+      const display = document.getElementById('timerDisplay');
+      if (display) display.textContent = formatSeconds(elapsed);
+      const pct = (elapsed % 60) / 60;
+      const ring = document.getElementById('timerRing');
+      if (ring) ring.style.strokeDashoffset = 565 - (565 * pct);
+      updateHeaderStats();
     }
-  } else {
-    // ── Normal count-up mode ──
-    document.getElementById('timerDisplay').textContent = formatSeconds(elapsed);
-    const pct = (elapsed % 60) / 60;
-    document.getElementById('timerRing').style.strokeDashoffset = 565 - (565 * pct);
-    updateHeaderStats();
+  } catch(err) {
+    console.error('tickTimer error:', err);
   }
+}
+
+// Separate clean function for Pomodoro session completion
+function pomoCompleteSession() {
+  try {
+    const s    = getPomoSettings();
+    const name = document.getElementById('taskName')?.value.trim() || 'Pomodoro session';
+    const proj = document.getElementById('taskProject')?.value || '';
+
+    // Update state
+    state.timer.running = false;
+    pomoState.totalToday++;
+    const isLongBreak = (pomoState.session % 4 === 0);
+    const breakMins   = isLongBreak ? s.long : s.short;
+    pomoState.phase   = isLongBreak ? 'long_break' : 'short_break';
+
+    // Reset UI
+    const startBtn = document.getElementById('startBtn');
+    if (startBtn) { startBtn.textContent = '▶ Start'; startBtn.style.background = ''; }
+    const discardBtn = document.getElementById('discardBtn');
+    if (discardBtn) discardBtn.style.display = 'none';
+    const runInd = document.getElementById('runningInd');
+    if (runInd) runInd.classList.remove('show');
+
+    // Reset timer display to work duration
+    pomoState.workSecs = s.work * 60;
+    state.timer = { running: false, start: null, elapsed: 0 };
+    const display = document.getElementById('timerDisplay');
+    if (display) display.textContent = formatMMSS(pomoState.workSecs);
+    const ring = document.getElementById('timerRing');
+    if (ring) ring.style.strokeDashoffset = 565;
+
+    // Log entry
+    const entryTags = [...(state.selectedTags || [])];
+    if (!entryTags.includes('deep')) entryTags.push('deep');
+    addEntry({ name, project: proj, tags: entryTags, duration: s.work * 60, billable: true });
+
+    updatePomoDisplay();
+
+    // Show break overlay
+    pomoShowBreak(breakMins, isLongBreak);
+
+  } catch(err) {
+    console.error('pomoCompleteSession error:', err);
+    showToast('🍅 Session done! Error showing break: ' + err.message);
+  }
+}
+
+function pomoShowBreak(breakMins, isLong) {
+  // Remove any existing overlay
+  const existing = document.getElementById('pomoBreakOverlay');
+  if (existing) existing.remove();
+
+  const s = getPomoSettings();
+  const totalFocusMins = pomoState.totalToday * s.work;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'pomoBreakOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  overlay.innerHTML = `
+    <div style="background:#12121a;border:1px solid #2a2a3a;border-radius:24px;padding:36px 28px;width:100%;max-width:360px;text-align:center">
+      <div style="font-size:56px;margin-bottom:12px">${isLong ? '🌿' : '☕'}</div>
+      <div style="font-size:22px;font-weight:800;margin-bottom:8px;color:#e8e8f0">${isLong ? 'Long Break!' : 'Short Break!'}</div>
+      <div style="font-size:13px;color:#6b6b80;margin-bottom:20px;line-height:1.5">
+        ${isLong ? 'Amazing — 4 sessions done! Step away and recharge.' : 'Session complete! Rest your eyes.'}
+      </div>
+      <div id="pomoBreakTimer" style="font-family:monospace;font-size:56px;font-weight:500;color:#6af7c8;margin-bottom:20px;letter-spacing:-2px">${formatMMSS(breakMins*60)}</div>
+      <div style="display:flex;gap:12px;justify-content:center;margin-bottom:16px;font-size:13px;color:#6b6b80">
+        <div><span style="font-size:20px;font-weight:700;color:#7c6af7;display:block">${pomoState.totalToday}</span>🍅 Today</div>
+        <div><span style="font-size:20px;font-weight:700;color:#7c6af7;display:block">${totalFocusMins}m</span>Focus</div>
+        <div><span style="font-size:20px;font-weight:700;color:#7c6af7;display:block">${pomoState.session}</span>Session</div>
+      </div>
+      <button id="pomoNextBtn" onclick="pomoNextSession()" style="width:100%;padding:14px;background:#7c6af7;color:white;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px">
+        ▶ Start Next Session
+      </button>
+      <button onclick="pomoSkipBreak()" style="width:100%;padding:10px;background:none;color:#6b6b80;border:1px solid #2a2a3a;border-radius:12px;font-family:inherit;font-size:13px;cursor:pointer">
+        Skip Break
+      </button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  // Break countdown
+  let remaining = breakMins * 60;
+  pomoState.breakInterval = setInterval(() => {
+    remaining--;
+    const el = document.getElementById('pomoBreakTimer');
+    if (el) el.textContent = formatMMSS(Math.max(0, remaining));
+    if (remaining <= 0) {
+      clearInterval(pomoState.breakInterval);
+      const btn = document.getElementById('pomoNextBtn');
+      if (btn) { btn.textContent = '🍅 Break Over — Start!'; btn.style.background = '#6af7c8'; btn.style.color = '#0a0a0f'; }
+    }
+  }, 1000);
+}
+
+function pomoNextSession() {
+  clearInterval(pomoState.breakInterval);
+  const overlay = document.getElementById('pomoBreakOverlay');
+  if (overlay) overlay.remove();
+
+  const ring = document.getElementById('timerRing');
+  if (ring) { ring.classList.remove('pomo-break','pomo-long-break'); ring.style.strokeDashoffset = 565; }
+
+  if (pomoState.session >= 4) {
+    pomoState.session = 1;
+  } else {
+    pomoState.session++;
+  }
+  pomoState.phase = 'work';
+
+  const s = getPomoSettings();
+  pomoState.workSecs = s.work * 60;
+  const display = document.getElementById('timerDisplay');
+  if (display) display.textContent = formatMMSS(pomoState.workSecs);
+
+  updatePomoDisplay();
+  showToast('🍅 Session ' + pomoState.session + ' — Focus!');
+}
+
+function pomoSkipBreak() {
+  clearInterval(pomoState.breakInterval);
+  const overlay = document.getElementById('pomoBreakOverlay');
+  if (overlay) overlay.remove();
+  pomoNextSession();
 }
 
 function stopTimer(save_entry) {
@@ -5157,143 +5287,13 @@ function formatMMSS(secs) {
 
 // tickTimer handles both normal and Pomodoro modes
 
-function onPomoSessionComplete() {
-  try {
-    const s    = getPomoSettings();
-    const name = document.getElementById('taskName')?.value.trim() || 'Pomodoro session';
-    const proj = document.getElementById('taskProject')?.value || '';
+// (replaced by pomoCompleteSession)
 
-    // Reset timer state first
-    pomoState.totalToday++;
-    state.timer = { running: false, start: null, elapsed: 0 };
-    document.getElementById('startBtn').textContent = '▶ Start';
-    document.getElementById('startBtn').style.background = '';
-    document.getElementById('discardBtn').style.display = 'none';
-    document.getElementById('runningInd').classList.remove('show');
+// (replaced)
 
-    // Determine break type before addEntry (which triggers renders)
-    const isLongBreak = pomoState.session % 4 === 0;
-    const breakMins   = isLongBreak ? s.long : s.short;
-    pomoState.phase   = isLongBreak ? 'long_break' : 'short_break';
+// (replaced)
 
-    // Auto-log the completed session
-    const entryTags = [...state.selectedTags];
-    if (!entryTags.includes('deep')) entryTags.push('deep');
-    addEntry({ name, project: proj, tags: entryTags, duration: s.work * 60, billable: true });
-
-    // Send notification
-    if (typeof sendNotification === 'function') {
-      sendNotification(
-        isLongBreak ? '🌿 Long Break Time!' : '☕ Short Break Time!',
-        `Great work! "${name}" logged. Take a ${breakMins}-minute break.`,
-        'pomo-break'
-      );
-    }
-
-    // Delay overlay slightly so DOM updates from addEntry settle first
-    setTimeout(() => showPomoBreak(breakMins, isLongBreak), 100);
-
-  } catch(err) {
-    console.error('Pomodoro session complete error:', err);
-    showToast('🍅 Session done! (Break overlay error — check console)');
-  }
-}
-
-function showPomoBreak(breakMins, isLong) {
-  document.getElementById('pomoBreakOverlay')?.remove();
-
-  const overlay = document.createElement('div');
-  overlay.id    = 'pomoBreakOverlay';
-  overlay.className = 'pomo-break-overlay';
-
-  const s = getPomoSettings();
-  const totalFocusMins = pomoState.totalToday * s.work;
-
-  overlay.innerHTML = `
-    <div class="pomo-break-card">
-      <div class="pomo-break-emoji">${isLong ? '🌿' : '☕'}</div>
-      <div class="pomo-break-title">${isLong ? 'Long Break!' : 'Short Break!'}</div>
-      <div class="pomo-break-sub">
-        ${isLong
-          ? 'Excellent work — 4 sessions complete! Step away, stretch, get some water.'
-          : 'Session complete! Rest your eyes and take a breath.'}
-      </div>
-      <div class="pomo-break-countdown" id="breakCountdown">${formatMMSS(breakMins*60)}</div>
-      <div class="pomo-stats-row">
-        <div class="pomo-stat">
-          <div class="pomo-stat-val">${pomoState.totalToday}</div>
-          <div class="pomo-stat-label">🍅 Today</div>
-        </div>
-        <div class="pomo-stat">
-          <div class="pomo-stat-val">${totalFocusMins}m</div>
-          <div class="pomo-stat-label">⏱ Focus</div>
-        </div>
-        <div class="pomo-stat">
-          <div class="pomo-stat-val">${pomoState.session}</div>
-          <div class="pomo-stat-label">📍 Session</div>
-        </div>
-      </div>
-      <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="startNextSession()">
-        ▶ Start Next Session
-      </button>
-      <button class="btn btn-ghost" style="width:100%" onclick="skipBreak()">
-        Skip Break
-      </button>
-    </div>`;
-
-  document.body.appendChild(overlay);
-
-  // Break countdown
-  let remaining = breakMins * 60;
-  const ring = document.getElementById('timerRing');
-  ring?.classList.add(isLong ? 'pomo-long-break' : 'pomo-break');
-
-  pomoState.breakInterval = setInterval(() => {
-    remaining--;
-    const el = document.getElementById('breakCountdown');
-    if (el) el.textContent = formatMMSS(remaining);
-    if (remaining <= 0) {
-      clearInterval(pomoState.breakInterval);
-      // Auto notify break over
-      sendNotification('🍅 Break Over!', 'Time to focus again. Start your next session!', 'pomo-start');
-      // Flash the button
-      const btn = overlay.querySelector('.btn-primary');
-      if (btn) { btn.textContent = '🍅 Break Over — Start!'; btn.style.animation = 'pulse 1s infinite'; }
-    }
-  }, 1000);
-}
-
-function startNextSession() {
-  clearInterval(pomoState.breakInterval);
-  document.getElementById('pomoBreakOverlay')?.remove();
-
-  const ring = document.getElementById('timerRing');
-  ring?.classList.remove('pomo-break','pomo-long-break');
-
-  // Advance session
-  if (pomoState.session >= 4) {
-    pomoState.session = 1;
-  } else {
-    pomoState.session++;
-  }
-  pomoState.phase = 'work';
-
-  const s = getPomoSettings();
-  pomoState.workSecs = s.work * 60;
-  document.getElementById('timerDisplay').textContent = formatMMSS(pomoState.workSecs);
-  document.getElementById('timerRing').style.strokeDashoffset = 565;
-
-  updatePomoDisplay();
-  showToast('🍅 Session ' + pomoState.session + ' — Focus!');
-}
-
-function skipBreak() {
-  clearInterval(pomoState.breakInterval);
-  document.getElementById('pomoBreakOverlay')?.remove();
-  const ring = document.getElementById('timerRing');
-  ring?.classList.remove('pomo-break','pomo-long-break');
-  startNextSession();
-}
+// (replaced)
 
 
 // ── Goal Sub-tabs ──
