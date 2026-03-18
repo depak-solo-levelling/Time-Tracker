@@ -1,4 +1,4 @@
-const CACHE = 'time-tracker-v32';
+const CACHE = 'time-tracker-v33';
 const ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,9 @@ const ASSETS = [
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS))
+    caches.open(CACHE).then(c => c.addAll(ASSETS).catch(err => {
+      console.warn('Cache addAll partial failure:', err);
+    }))
   );
   self.skipWaiting();
 });
@@ -23,28 +25,55 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Network first, fallback to cache
 self.addEventListener('fetch', e => {
-  e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
-        return res;
+  const url = new URL(e.request.url);
+
+  // Never cache API calls or external requests
+  if (!url.origin.includes('github.io') && !url.pathname.startsWith('/')) {
+    return; // let browser handle
+  }
+
+  // Skip non-GET requests
+  if (e.request.method !== 'GET') return;
+
+  // Cache-first for app assets, network-first for index.html
+  if (e.request.url.includes('index.html') || e.request.url.endsWith('/')) {
+    // Network first for main page so updates always show
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
+  } else {
+    // Cache first for other assets (icons, manifest)
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(res => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+          }
+          return res;
+        }).catch(() => cached);
       })
-      .catch(() => caches.match(e.request))
-  );
+    );
+  }
 });
 
-// Handle notification clicks — open app
+// Open app when notification clicked
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-      for (const client of clientList) {
-        if (client.url.includes('time-tracker') && 'focus' in client) {
-          return client.focus();
-        }
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const client of list) {
+        if ('focus' in client) return client.focus();
       }
       return clients.openWindow('./index.html');
     })
