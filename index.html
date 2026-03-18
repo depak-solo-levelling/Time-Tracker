@@ -2945,6 +2945,15 @@ let state = {
 
 let timerInterval = null;
 
+// Pomodoro state — defined here so tickTimer can access it
+let pomoState = {
+  active:        false,
+  phase:         'work',
+  session:       1,
+  totalToday:    0,
+  breakInterval: null,
+};
+
 function save() {
   localStorage.setItem('time-tracker_entries', JSON.stringify(state.entries));
   localStorage.setItem('time-tracker_projects', JSON.stringify(state.projects));
@@ -2969,15 +2978,22 @@ function switchTab(name) {
 function toggleTimer() {
   if (!state.timer.running) {
     state.timer.running = true;
-    state.timer.start = Date.now() - state.timer.elapsed * 1000;
+    state.timer.start   = Date.now() - state.timer.elapsed * 1000;
+
+    // Cache work duration for pomodoro so we don't read DOM every tick
+    if (pomoState.active) {
+      const s = getPomoSettings();
+      pomoState.workSecs = s.work * 60;
+      document.getElementById('timerDisplay').textContent = formatMMSS(pomoState.workSecs);
+    }
+
     timerInterval = setInterval(tickTimer, 1000);
     document.getElementById('startBtn').textContent = '⏸ Stop & Save';
     document.getElementById('startBtn').style.background = 'var(--accent2)';
     document.getElementById('discardBtn').style.display = '';
     document.getElementById('runningInd').classList.add('show');
-    const phaseText = pomoState.active ? '🍅 Focus session running' : 'Recording time';
     const indText = document.getElementById('runningIndText');
-    if (indText) indText.textContent = phaseText;
+    if (indText) indText.textContent = pomoState.active ? '🍅 Focus session running' : 'Recording time';
   } else {
     stopTimer(true);
   }
@@ -2987,29 +3003,28 @@ function tickTimer() {
   const elapsed = Math.floor((Date.now() - state.timer.start) / 1000);
   state.timer.elapsed = elapsed;
 
-  if (pomoState.active) {
+  if (pomoState && pomoState.active) {
     // ── Pomodoro countdown mode ──
-    const s        = getPomoSettings();
-    const workSecs = s.work * 60;
+    const workSecs  = pomoState.workSecs || 25 * 60;
     const remaining = Math.max(0, workSecs - elapsed);
 
     document.getElementById('timerDisplay').textContent = formatMMSS(remaining);
 
-    // Ring fills as time runs out
-    const pct = elapsed / workSecs;
-    document.getElementById('timerRing').style.strokeDashoffset = 565 - (565 * Math.min(pct, 1));
+    // Ring fills as session progresses
+    const pct = Math.min(elapsed / workSecs, 1);
+    document.getElementById('timerRing').style.strokeDashoffset = 565 - (565 * pct);
 
     updateHeaderStats();
 
-    // Session complete
-    if (remaining === 0) {
+    // Session complete when countdown hits 0
+    if (remaining <= 0) {
       clearInterval(timerInterval);
-      onPomoSessionComplete();
+      timerInterval = null;
+      setTimeout(onPomoSessionComplete, 200);
     }
   } else {
     // ── Normal count-up mode ──
     document.getElementById('timerDisplay').textContent = formatSeconds(elapsed);
-    // Ring cycles every 60 seconds
     const pct = (elapsed % 60) / 60;
     document.getElementById('timerRing').style.strokeDashoffset = 565 - (565 * pct);
     updateHeaderStats();
@@ -5021,14 +5036,7 @@ function startNotifChecker() {
 
 // ── Pomodoro Mode ──
 
-let pomoState = {
-  active:       false,
-  phase:        'work',    // 'work' | 'short_break' | 'long_break'
-  session:      1,         // current session (1-4)
-  totalToday:   0,         // total pomodoros completed today
-  breakInterval: null,
-  breakRemaining: 0,
-};
+// pomoState moved to top
 
 function getPomoSettings() {
   return {
@@ -5251,7 +5259,8 @@ function startNextSession() {
   pomoState.phase = 'work';
 
   const s = getPomoSettings();
-  document.getElementById('timerDisplay').textContent = formatMMSS(s.work * 60);
+  pomoState.workSecs = s.work * 60;
+  document.getElementById('timerDisplay').textContent = formatMMSS(pomoState.workSecs);
   document.getElementById('timerRing').style.strokeDashoffset = 565;
 
   updatePomoDisplay();
