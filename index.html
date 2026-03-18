@@ -3162,14 +3162,54 @@ function pomoNextSession() {
   if (display) display.textContent = formatMMSS(pomoState.workSecs);
 
   updatePomoDisplay();
-  showToast('🍅 Session ' + pomoState.session + ' — Focus!');
+
+  // ── Auto-start the next session ──
+  state.timer.running = true;
+  state.timer.start   = Date.now();
+  state.timer.elapsed = 0;
+
+  timerInterval = setInterval(tickTimer, 1000);
+
+  const startBtn = document.getElementById('startBtn');
+  if (startBtn) { startBtn.textContent = '⏸ Abandon Session'; startBtn.style.background = 'var(--danger)'; }
+  const discardBtn = document.getElementById('discardBtn');
+  if (discardBtn) discardBtn.style.display = '';
+  const runInd = document.getElementById('runningInd');
+  if (runInd) runInd.classList.add('show');
+  const indText = document.getElementById('runningIndText');
+  if (indText) indText.textContent = '🍅 Focus session running';
+
+  showToast('🍅 Session ' + pomoState.session + ' started!');
 }
 
 function pomoSkipBreak() {
   clearInterval(pomoState.breakInterval);
   const overlay = document.getElementById('pomoBreakOverlay');
   if (overlay) overlay.remove();
-  pomoNextSession();
+
+  const ring = document.getElementById('timerRing');
+  if (ring) { ring.classList.remove('pomo-break','pomo-long-break'); ring.style.strokeDashoffset = 565; }
+
+  // Advance session counter but DON'T auto-start — user must press Start
+  if (pomoState.session >= 4) {
+    pomoState.session = 1;
+  } else {
+    pomoState.session++;
+  }
+  pomoState.phase = 'work';
+
+  const s = getPomoSettings();
+  pomoState.workSecs = s.work * 60;
+  const display = document.getElementById('timerDisplay');
+  if (display) display.textContent = formatMMSS(pomoState.workSecs);
+
+  const startBtn = document.getElementById('startBtn');
+  if (startBtn) { startBtn.textContent = '▶ Start'; startBtn.style.background = ''; }
+  const discardBtn = document.getElementById('discardBtn');
+  if (discardBtn) discardBtn.style.display = 'none';
+
+  updatePomoDisplay();
+  showToast('🍅 Session ' + pomoState.session + ' ready — tap Start when ready');
 }
 
 function stopTimer(save_entry) {
@@ -3223,6 +3263,7 @@ function addEntry(data) {
   renderEntries();
   updateHeaderStats();
   renderStreaks();
+  if (pomoState?.active) { syncPomoStateFromEntries(); updatePomoDisplay(); }
   checkAutoBackup();
   showToast('✓ Entry saved — ' + formatSeconds(data.duration));
 }
@@ -3233,6 +3274,7 @@ function deleteEntry(id) {
   renderEntries();
   updateHeaderStats();
   renderStreaks();
+  if (pomoState?.active) { syncPomoStateFromEntries(); updatePomoDisplay(); }
 }
 
 function toggleTag(tag) {
@@ -4056,6 +4098,7 @@ function deleteDailyEntry(id) {
   renderEntries();
   updateHeaderStats();
   renderReports();
+  if (pomoState?.active) { syncPomoStateFromEntries(); updatePomoDisplay(); }
   showToast('🗑 Entry deleted');
 }
 
@@ -5188,6 +5231,21 @@ function startNotifChecker() {
 
 // pomoState moved to top
 
+
+function getPomodoroCountToday() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return state.entries.filter(e =>
+    e.date >= today.getTime() && (e.tags||[]).includes('deep')
+  ).length;
+}
+
+function syncPomoStateFromEntries() {
+  const count = getPomodoroCountToday();
+  pomoState.totalToday = count;
+  // Session within current cycle (1-4)
+  pomoState.session = (count % 4) + 1;
+}
+
 function getPomoSettings() {
   return {
     work:  parseInt(localStorage.getItem('pomo_work')  || '25'),
@@ -5216,6 +5274,7 @@ function loadPomoSettings() {
 function togglePomodoroMode() {
   const on = document.getElementById('pomoToggle')?.checked;
   pomoState.active = on;
+  if (on) syncPomoStateFromEntries();
 
   const sessions = document.getElementById('pomoSessions');
   const manualBtn= document.getElementById('manualBtn');
@@ -5276,7 +5335,8 @@ function updatePomoDisplay() {
     }
   }
 
-  if (count) count.textContent = `Session ${pomoState.session} of 4 · ${pomoState.totalToday} completed today`;
+  const liveCount = getPomodoroCountToday();
+  if (count) count.textContent = `Session ${pomoState.session} of 4 · ${liveCount} completed today`;
 }
 
 function formatMMSS(secs) {
@@ -5963,6 +6023,8 @@ function initApp() {
     updateBackupStatus();
     updateAnalyzeBtn();
     renderStreaks();
+    syncPomoStateFromEntries();
+    updatePomoDisplay();
     checkMorningPopup();
     startNotifChecker();
   } catch(err) {
@@ -6328,6 +6390,8 @@ function saveEditEntry(id) {
   document.getElementById('editEntryModal').remove();
   renderEntries();
   updateHeaderStats();
+  syncPomoStateFromEntries();
+  updatePomoDisplay();
   showToast('✓ Entry updated');
 }
 
