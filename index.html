@@ -5130,40 +5130,45 @@ function formatMMSS(secs) {
 // tickTimer handles both normal and Pomodoro modes
 
 function onPomoSessionComplete() {
-  const s    = getPomoSettings();
-  const name = document.getElementById('taskName').value.trim() || 'Pomodoro session';
-  const proj = document.getElementById('taskProject').value;
+  try {
+    const s    = getPomoSettings();
+    const name = document.getElementById('taskName')?.value.trim() || 'Pomodoro session';
+    const proj = document.getElementById('taskProject')?.value || '';
 
-  // Auto-log the completed session
-  addEntry({
-    name,
-    project: proj,
-    tags: [...state.selectedTags, 'deep'],
-    duration: s.work * 60,
-    billable: true
-  });
+    // Reset timer state first
+    pomoState.totalToday++;
+    state.timer = { running: false, start: null, elapsed: 0 };
+    document.getElementById('startBtn').textContent = '▶ Start';
+    document.getElementById('startBtn').style.background = '';
+    document.getElementById('discardBtn').style.display = 'none';
+    document.getElementById('runningInd').classList.remove('show');
 
-  pomoState.totalToday++;
-  state.timer = { running: false, start: null, elapsed: 0 };
-  document.getElementById('startBtn').textContent = '▶ Start';
-  document.getElementById('startBtn').style.background = '';
-  document.getElementById('discardBtn').style.display = 'none';
-  document.getElementById('runningInd').classList.remove('show');
+    // Determine break type before addEntry (which triggers renders)
+    const isLongBreak = pomoState.session % 4 === 0;
+    const breakMins   = isLongBreak ? s.long : s.short;
+    pomoState.phase   = isLongBreak ? 'long_break' : 'short_break';
 
-  // Determine break type
-  const isLongBreak = pomoState.session % 4 === 0;
-  const breakMins   = isLongBreak ? s.long : s.short;
-  pomoState.phase   = isLongBreak ? 'long_break' : 'short_break';
+    // Auto-log the completed session
+    const entryTags = [...state.selectedTags];
+    if (!entryTags.includes('deep')) entryTags.push('deep');
+    addEntry({ name, project: proj, tags: entryTags, duration: s.work * 60, billable: true });
 
-  // Notification
-  sendNotification(
-    isLongBreak ? '🌿 Long Break Time!' : '☕ Short Break Time!',
-    `Great work! ${name} logged. Take a ${breakMins}-minute break — you earned it.`,
-    'pomo-break'
-  );
+    // Send notification
+    if (typeof sendNotification === 'function') {
+      sendNotification(
+        isLongBreak ? '🌿 Long Break Time!' : '☕ Short Break Time!',
+        `Great work! "${name}" logged. Take a ${breakMins}-minute break.`,
+        'pomo-break'
+      );
+    }
 
-  // Show break overlay
-  showPomoBreak(breakMins, isLongBreak);
+    // Delay overlay slightly so DOM updates from addEntry settle first
+    setTimeout(() => showPomoBreak(breakMins, isLongBreak), 100);
+
+  } catch(err) {
+    console.error('Pomodoro session complete error:', err);
+    showToast('🍅 Session done! (Break overlay error — check console)');
+  }
 }
 
 function showPomoBreak(breakMins, isLong) {
